@@ -29,26 +29,37 @@ interface Game {
   highlights?: GameEvent[];
 }
 
+interface Player {
+  id: number;
+  name: string;
+  number: number;
+  team_id: number;
+  photo?: string;
+  goals: number;
+  yellow_cards: number;
+  red_cards: number;
+}
+
 const LiveGames = () => {
   const [games, setGames] = useState<Game[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedSport, setSelectedSport] = useState('all');
   const [sports, setSports] = useState<string[]>([]);
-  const [players, setPlayers] = useState<Record<number, string>>({});
+  const [players, setPlayers] = useState<Record<number, Player>>({});
 
   useEffect(() => {
     const fetchPlayers = async () => {
       try {
         const { data, error } = await supabase
           .from('players')
-          .select('id, name');
+          .select('*');
 
         if (error) throw error;
 
         const playersMap = (data || []).reduce((acc, player) => {
-          acc[player.id] = player.name;
+          acc[player.id] = player;
           return acc;
-        }, {} as Record<number, string>);
+        }, {} as Record<number, Player>);
 
         setPlayers(playersMap);
       } catch (error) {
@@ -275,10 +286,10 @@ const LiveGames = () => {
                           <span>{new Date(event.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
                           <span>-</span>
                           <span>
-                            {event.type === 'goal' && `⚽ Gol - ${players[event.player_id] || 'Jogador não encontrado'}`}
-                            {event.type === 'yellow_card' && `🟨 Cartão Amarelo - ${players[event.player_id] || 'Jogador não encontrado'}`}
-                            {event.type === 'red_card' && `🟥 Cartão Vermelho - ${players[event.player_id] || 'Jogador não encontrado'}`}
-                            {event.type === 'substitution' && `🔄 Substituição - ${players[event.player_id] || 'Jogador não encontrado'}`}
+                            {event.type === 'goal' && `⚽ Gol - ${players[event.player_id]?.name || 'Jogador não encontrado'} (#${players[event.player_id]?.number || '?'})`}
+                            {event.type === 'yellow_card' && `🟨 Cartão Amarelo - ${players[event.player_id]?.name || 'Jogador não encontrado'} (#${players[event.player_id]?.number || '?'})`}
+                            {event.type === 'red_card' && `🟥 Cartão Vermelho - ${players[event.player_id]?.name || 'Jogador não encontrado'} (#${players[event.player_id]?.number || '?'})`}
+                            {event.type === 'substitution' && `🔄 Substituição - ${players[event.player_id]?.name || 'Jogador não encontrado'} (#${players[event.player_id]?.number || '?'})`}
                           </span>
                           <span>-</span>
                           <span>{event.team === 'A' ? game.team_a_name : game.team_b_name}</span>

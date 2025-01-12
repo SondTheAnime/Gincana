@@ -4,11 +4,22 @@ import { supabase } from '../../../lib/supabase';
 import { toast } from 'react-toastify';
 import { Team, Match, GameEvent, GameStatus } from './types';
 
+interface Player {
+  id: number;
+  name: string;
+  number: number;
+  team_id: number;
+  photo?: string;
+  goals: number;
+  yellow_cards: number;
+  red_cards: number;
+}
+
 const ManageCalendar = () => {
   const [loading, setLoading] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState(() => {
-    const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const today = new Date();
+    return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
   });
   const [groupedMatches, setGroupedMatches] = useState<Record<string, Match[]>>({});
   const [isEditingMatch, setIsEditingMatch] = useState(false);
@@ -16,7 +27,7 @@ const ManageCalendar = () => {
   const [teams, setTeams] = useState<Team[]>([]);
   const [filteredTeams, setFilteredTeams] = useState<Team[]>([]);
   const [sports, setSports] = useState<string[]>([]);
-  const [players, setPlayers] = useState<Record<number, string>>({});
+  const [players, setPlayers] = useState<Player[]>([]);
 
   const locations = ['Quadra Principal', 'Quadra Coberta', 'Campo', 'Piscina', 'Ginásio'];
   const categories = ['Masculino', 'Feminino', 'Misto'];
@@ -110,19 +121,14 @@ const ManageCalendar = () => {
     try {
       const { data, error } = await supabase
         .from('players')
-        .select('id, name');
+        .select('*')
+        .order('name');
 
       if (error) throw error;
-
-      const playersMap = (data || []).reduce((acc, player) => {
-        acc[player.id] = player.name;
-        return acc;
-      }, {} as Record<number, string>);
-
-      setPlayers(playersMap);
+      setPlayers(data || []);
     } catch (error) {
       console.error('Erro ao buscar jogadores:', error);
-      toast.error('Erro ao carregar jogadores. Tente novamente.');
+      toast.error('Erro ao carregar jogadores');
     }
   };
 
@@ -335,20 +341,23 @@ const ManageCalendar = () => {
                           </div>
                           {(match.highlights?.length ?? 0) > 0 && (
                             <div className="mt-2 space-y-1">
-                              {match.highlights?.map((event: GameEvent, index: number) => (
-                                <div key={index} className="text-sm text-gray-600 dark:text-gray-400 flex items-center space-x-2">
-                                  <span>{new Date(event.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
-                                  <span>-</span>
-                                  <span>
-                                    {event.type === 'goal' && `⚽ Gol - ${players[event.player_id] || 'Jogador não encontrado'}`}
-                                    {event.type === 'yellow_card' && `🟨 Cartão Amarelo - ${players[event.player_id] || 'Jogador não encontrado'}`}
-                                    {event.type === 'red_card' && `🟥 Cartão Vermelho - ${players[event.player_id] || 'Jogador não encontrado'}`}
-                                    {event.type === 'substitution' && `🔄 Substituição - ${players[event.player_id] || 'Jogador não encontrado'}`}
-                                  </span>
-                                  <span>-</span>
-                                  <span>{event.team === 'A' ? match.team_a_name : match.team_b_name}</span>
-                                </div>
-                              ))}
+                              {match.highlights?.map((event: GameEvent, index: number) => {
+                                const player = players.find(p => p.id === event.player_id);
+                                return (
+                                  <div key={index} className="text-sm text-gray-600 dark:text-gray-400 flex items-center space-x-2">
+                                    <span>{new Date(event.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+                                    <span>-</span>
+                                    <span>
+                                      {event.type === 'goal' && `⚽ Gol - ${player?.name || 'Jogador não encontrado'} (#${player?.number || '?'})`}
+                                      {event.type === 'yellow_card' && `🟨 Cartão Amarelo - ${player?.name || 'Jogador não encontrado'} (#${player?.number || '?'})`}
+                                      {event.type === 'red_card' && `🟥 Cartão Vermelho - ${player?.name || 'Jogador não encontrado'} (#${player?.number || '?'})`}
+                                      {event.type === 'substitution' && `🔄 Substituição - ${player?.name || 'Jogador não encontrado'} (#${player?.number || '?'})`}
+                                    </span>
+                                    <span>-</span>
+                                    <span>{event.team === 'A' ? match.team_a_name : match.team_b_name}</span>
+                                  </div>
+                                );
+                              })}
                             </div>
                           )}
                         </div>
