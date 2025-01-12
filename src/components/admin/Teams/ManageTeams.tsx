@@ -31,7 +31,10 @@ const ManageTeams = () => {
   const [newPlayer, setNewPlayer] = useState({
     name: '',
     number: '',
-    photo: undefined as string | undefined
+    photo: undefined as string | undefined,
+    goals: 0,
+    yellow_cards: 0,
+    red_cards: 0
   });
 
   useEffect(() => {
@@ -152,7 +155,10 @@ const ManageTeams = () => {
           name: newPlayer.name,
           number: parseInt(newPlayer.number),
           team_id: selectedTeam.id,
-          photo: newPlayer.photo
+          photo: newPlayer.photo,
+          goals: newPlayer.goals,
+          yellow_cards: newPlayer.yellow_cards,
+          red_cards: newPlayer.red_cards
         }])
         .select()
         .single();
@@ -164,7 +170,7 @@ const ManageTeams = () => {
         [selectedTeam.id]: [...(prev[selectedTeam.id] || []), data]
       }));
       
-      setNewPlayer({ name: '', number: '', photo: undefined });
+      setNewPlayer({ name: '', number: '', photo: undefined, goals: 0, yellow_cards: 0, red_cards: 0 });
       setIsAddingPlayer(false);
       toast.success('Jogador adicionado com sucesso!');
     } catch (error) {
@@ -188,7 +194,10 @@ const ManageTeams = () => {
         .update({
           name: editingPlayer.name,
           number: editingPlayer.number,
-          photo: editingPlayer.photo
+          photo: editingPlayer.photo,
+          goals: editingPlayer.goals,
+          yellow_cards: editingPlayer.yellow_cards,
+          red_cards: editingPlayer.red_cards
         })
         .eq('id', editingPlayer.id);
 

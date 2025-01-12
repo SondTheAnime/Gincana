@@ -12,8 +12,13 @@ export interface Player {
   id: number;
   name: string;
   number: number;
-  photo?: string;
   team_id: number;
+  photo?: string;
+  goals: number;
+  yellow_cards: number;
+  red_cards: number;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface Game {
@@ -33,6 +38,8 @@ export interface Game {
   location: string;
   status: GameStatus;
   highlights?: GameEvent[];
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface GameEvent {

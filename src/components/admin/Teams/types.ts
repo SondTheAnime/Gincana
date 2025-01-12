@@ -16,6 +16,9 @@ export interface Player {
   number: number;
   team_id: number;
   photo?: string;
+  goals: number;
+  yellow_cards: number;
+  red_cards: number;
   created_at?: string;
   updated_at?: string;
 }

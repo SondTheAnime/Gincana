@@ -70,6 +70,12 @@ const TeamDetails = ({ selectedTeam, players, onAddPlayer, onEditPlayer, onDelet
                   <p className="text-sm sm:text-base font-medium text-gray-900 dark:text-white">{player.name}</p>
                   <div className="flex items-center space-x-2 text-xs sm:text-sm text-gray-500 dark:text-gray-400">
                     <span>#{player.number}</span>
+                    <span>•</span>
+                    <span>⚽ {player.goals}</span>
+                    <span>•</span>
+                    <span>🟨 {player.yellow_cards}</span>
+                    <span>•</span>
+                    <span>🟥 {player.red_cards}</span>
                   </div>
                 </div>
               </div>

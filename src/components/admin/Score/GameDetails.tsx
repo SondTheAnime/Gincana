@@ -59,7 +59,10 @@ const GameDetails = ({ game, onClose, onUpdateGame }: GameDetailsProps) => {
 
   const handleAddEvent = async (newEvent: Omit<GameEvent, 'id' | 'created_at' | 'updated_at'>) => {
     try {
-      const highlights = game.highlights || []
+      const player = players.find(p => p.id === newEvent.player_id);
+      if (!player) throw new Error('Jogador não encontrado');
+
+      const highlights = game.highlights || [];
       const updatedGame = {
         ...game,
         highlights: [
@@ -69,21 +72,56 @@ const GameDetails = ({ game, onClose, onUpdateGame }: GameDetailsProps) => {
             created_at: new Date().toISOString()
           }
         ]
-      }
+      };
 
       // Atualizar placar se for gol
       if (newEvent.type === 'goal') {
-        updatedGame.score_a = newEvent.team === 'A' ? game.score_a + 1 : game.score_a
-        updatedGame.score_b = newEvent.team === 'B' ? game.score_b + 1 : game.score_b
+        updatedGame.score_a = newEvent.team === 'A' ? game.score_a + 1 : game.score_a;
+        updatedGame.score_b = newEvent.team === 'B' ? game.score_b + 1 : game.score_b;
       }
 
-      onUpdateGame(updatedGame)
-      toast.success('Evento adicionado com sucesso!')
+      // Atualizar estatísticas do jogador
+      const updatedStats = {
+        goals: player.goals,
+        yellow_cards: player.yellow_cards,
+        red_cards: player.red_cards
+      };
+
+      switch (newEvent.type) {
+        case 'goal':
+          updatedStats.goals += 1;
+          break;
+        case 'yellow_card':
+          updatedStats.yellow_cards += 1;
+          break;
+        case 'red_card':
+          updatedStats.red_cards += 1;
+          break;
+      }
+
+      const { error: playerError } = await supabase
+        .from('players')
+        .update(updatedStats)
+        .eq('id', player.id);
+
+      if (playerError) throw playerError;
+
+      // Atualizar o estado local dos jogadores
+      setPlayers(currentPlayers => 
+        currentPlayers.map(p => 
+          p.id === player.id 
+            ? { ...p, ...updatedStats }
+            : p
+        )
+      );
+
+      onUpdateGame(updatedGame);
+      toast.success('Evento adicionado com sucesso!');
     } catch (error) {
-      console.error('Erro ao adicionar evento:', error)
-      toast.error('Erro ao adicionar evento. Tente novamente.')
+      console.error('Erro ao adicionar evento:', error);
+      toast.error('Erro ao adicionar evento. Tente novamente.');
     }
-  }
+  };
 
   if (loading) {
     return (
