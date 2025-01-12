@@ -2,7 +2,7 @@ import { createBrowserRouter, Navigate } from 'react-router-dom';
 import App from '../App';
 import AdminLogin from '../components/admin/AdminLogin';
 import AdminDashboard from '../components/admin/AdminDashboard';
-import LiveGames from '../components/home/LiveGames';
+import LiveGames from '../components/home/LiveGames/LiveGames';
 import UpcomingMatches from '../components/home/UpcomingMatches';
 import Home from '../pages/Home';
 import PrivateRoute from '../components/admin/PrivateRoute';

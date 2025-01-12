@@ -398,6 +398,34 @@ const TeamModals = ({
                 </div>
               </div>
 
+              <div className="flex space-x-4">
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="editPlayerStarter"
+                    checked={editingPlayer.is_starter}
+                    onChange={(e) => onChangeEditingPlayer('is_starter', e.target.checked)}
+                    className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600"
+                  />
+                  <label htmlFor="editPlayerStarter" className="ml-2 block text-xs sm:text-sm text-gray-700 dark:text-gray-300">
+                    Titular
+                  </label>
+                </div>
+
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="editPlayerCaptain"
+                    checked={editingPlayer.is_captain}
+                    onChange={(e) => onChangeEditingPlayer('is_captain', e.target.checked)}
+                    className="h-4 w-4 text-yellow-600 focus:ring-yellow-500 border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600"
+                  />
+                  <label htmlFor="editPlayerCaptain" className="ml-2 block text-xs sm:text-sm text-gray-700 dark:text-gray-300">
+                    Capitão
+                  </label>
+                </div>
+              </div>
+
               <div className="flex justify-end space-x-2 sm:space-x-3 mt-4 sm:mt-6">
                 <button
                   type="button"

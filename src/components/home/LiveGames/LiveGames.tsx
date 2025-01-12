@@ -1,75 +1,16 @@
 import { useState, useEffect } from 'react';
 import { Activity, Filter } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import { supabase } from '../../../lib/supabase';
 import { toast } from 'react-toastify';
-
-interface GameEvent {
-  created_at: string;
-  player_id: number;
-  team: 'A' | 'B';
-  type: 'goal' | 'yellow_card' | 'red_card' | 'substitution';
-}
-
-interface Game {
-  id: number;
-  sport: string;
-  team_a: number;
-  team_b: number;
-  team_a_name: string;
-  team_b_name: string;
-  score_a: number;
-  score_b: number;
-  date: string;
-  time: string;
-  game_time: string;
-  period: string;
-  location: string;
-  category: string;
-  status: 'scheduled' | 'live' | 'finished' | 'cancelled';
-  highlights?: GameEvent[];
-}
-
-interface Player {
-  id: number;
-  name: string;
-  number: number;
-  team_id: number;
-  photo?: string;
-  goals: number;
-  yellow_cards: number;
-  red_cards: number;
-}
+import { Game } from './types';
+import { GameDetails } from './components/GameDetails';
 
 const LiveGames = () => {
   const [games, setGames] = useState<Game[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedSport, setSelectedSport] = useState('all');
   const [sports, setSports] = useState<string[]>([]);
-  const [players, setPlayers] = useState<Record<number, Player>>({});
-
-  useEffect(() => {
-    const fetchPlayers = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('players')
-          .select('*');
-
-        if (error) throw error;
-
-        const playersMap = (data || []).reduce((acc, player) => {
-          acc[player.id] = player;
-          return acc;
-        }, {} as Record<number, Player>);
-
-        setPlayers(playersMap);
-      } catch (error) {
-        console.error('Erro ao buscar jogadores:', error);
-        toast.error('Erro ao carregar jogadores');
-      }
-    };
-
-    fetchPlayers();
-  }, []);
+  const [selectedGameId, setSelectedGameId] = useState<number | null>(null);
 
   useEffect(() => {
     const fetchGames = async () => {
@@ -109,7 +50,7 @@ const LiveGames = () => {
         // Parse dos highlights
         const gamesWithParsedHighlights = (data || []).map(game => ({
           ...game,
-          highlights: (game.highlights || []).map((highlight: string | GameEvent) => {
+          highlights: (game.highlights || []).map((highlight: string | any) => {
             try {
               return typeof highlight === 'string' ? JSON.parse(highlight) : highlight;
             } catch (e) {
@@ -145,7 +86,7 @@ const LiveGames = () => {
           if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
             setGames(current => {
               const index = current.findIndex(game => game.id === payload.new.id);
-              const highlights = (payload.new.highlights || []).map((highlight: string | GameEvent) => {
+              const highlights = (payload.new.highlights || []).map((highlight: string | any) => {
                 try {
                   return typeof highlight === 'string' ? JSON.parse(highlight) : highlight;
                 } catch (e) {
@@ -250,7 +191,8 @@ const LiveGames = () => {
           {games.map((game) => (
             <div
               key={game.id}
-              className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden"
+              className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden cursor-pointer hover:shadow-lg transition-shadow"
+              onClick={() => setSelectedGameId(game.id)}
             >
               <div className="p-4">
                 <div className="flex items-center justify-between mb-4">
@@ -281,20 +223,25 @@ const LiveGames = () => {
                   </div>
                   {(game.highlights?.length ?? 0) > 0 && (
                     <div className="mt-2 space-y-1 border-t border-gray-200 dark:border-gray-700 pt-2">
-                      {game.highlights?.map((event: GameEvent, index: number) => (
+                      {game.highlights?.slice(0, 3).map((event: any, index: number) => (
                         <div key={index} className="text-sm text-gray-600 dark:text-gray-400 flex items-center space-x-2">
                           <span>{new Date(event.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
                           <span>-</span>
                           <span>
-                            {event.type === 'goal' && `⚽ Gol - ${players[event.player_id]?.name || 'Jogador não encontrado'} (#${players[event.player_id]?.number || '?'})`}
-                            {event.type === 'yellow_card' && `🟨 Cartão Amarelo - ${players[event.player_id]?.name || 'Jogador não encontrado'} (#${players[event.player_id]?.number || '?'})`}
-                            {event.type === 'red_card' && `🟥 Cartão Vermelho - ${players[event.player_id]?.name || 'Jogador não encontrado'} (#${players[event.player_id]?.number || '?'})`}
-                            {event.type === 'substitution' && `🔄 Substituição - ${players[event.player_id]?.name || 'Jogador não encontrado'} (#${players[event.player_id]?.number || '?'})`}
+                            {event.type === 'goal' && '⚽ Gol'}
+                            {event.type === 'yellow_card' && '🟨 Cartão Amarelo'}
+                            {event.type === 'red_card' && '🟥 Cartão Vermelho'}
+                            {event.type === 'substitution' && '🔄 Substituição'}
                           </span>
                           <span>-</span>
                           <span>{event.team === 'A' ? game.team_a_name : game.team_b_name}</span>
                         </div>
                       ))}
+                      {(game.highlights?.length ?? 0) > 3 && (
+                        <p className="text-sm text-gray-500 dark:text-gray-400 text-center mt-2">
+                          Clique para ver mais detalhes
+                        </p>
+                      )}
                     </div>
                   )}
                 </div>
@@ -302,6 +249,13 @@ const LiveGames = () => {
             </div>
           ))}
         </div>
+      )}
+
+      {selectedGameId && (
+        <GameDetails
+          gameId={selectedGameId}
+          onClose={() => setSelectedGameId(null)}
+        />
       )}
     </div>
   );

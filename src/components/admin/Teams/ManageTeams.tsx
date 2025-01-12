@@ -287,6 +287,68 @@ const ManageTeams = () => {
     }
   };
 
+  const handleToggleStarter = async (player: Player) => {
+    try {
+      const { error } = await supabase
+        .from('players')
+        .update({ is_starter: !player.is_starter })
+        .eq('id', player.id);
+
+      if (error) throw error;
+
+      // Atualizar o estado local
+      setPlayers(prev => ({
+        ...prev,
+        [player.team_id]: prev[player.team_id].map(p => 
+          p.id === player.id ? { ...p, is_starter: !p.is_starter } : p
+        )
+      }));
+
+      toast.success(`${player.name} ${!player.is_starter ? 'definido como titular' : 'movido para reserva'}`);
+    } catch (error) {
+      console.error('Erro ao atualizar status do jogador:', error);
+      toast.error('Erro ao atualizar status do jogador');
+    }
+  };
+
+  const handleToggleCaptain = async (player: Player) => {
+    try {
+      // Primeiro, remove o capitão atual do time (se houver)
+      if (!player.is_captain) {
+        const currentCaptain = players[player.team_id]?.find(p => p.is_captain);
+        if (currentCaptain) {
+          await supabase
+            .from('players')
+            .update({ is_captain: false })
+            .eq('id', currentCaptain.id);
+        }
+      }
+
+      // Atualiza o status do jogador selecionado
+      const { error } = await supabase
+        .from('players')
+        .update({ is_captain: !player.is_captain })
+        .eq('id', player.id);
+
+      if (error) throw error;
+
+      // Atualizar o estado local
+      setPlayers(prev => ({
+        ...prev,
+        [player.team_id]: prev[player.team_id].map(p => 
+          p.id === player.id 
+            ? { ...p, is_captain: !p.is_captain }
+            : { ...p, is_captain: false }
+        )
+      }));
+
+      toast.success(`${player.name} ${!player.is_captain ? 'definido como capitão' : 'removido da capitania'}`);
+    } catch (error) {
+      console.error('Erro ao atualizar capitão:', error);
+      toast.error('Erro ao atualizar capitão');
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center py-12">
@@ -322,6 +384,8 @@ const ManageTeams = () => {
           players={selectedTeam ? players[selectedTeam.id] || [] : []}
           onAddPlayer={handleAddPlayer}
           onEditPlayer={handleEditPlayer}
+          onToggleStarter={handleToggleStarter}
+          onToggleCaptain={handleToggleCaptain}
         />
       </div>
 

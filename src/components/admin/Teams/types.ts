@@ -19,6 +19,8 @@ export interface Player {
   goals: number;
   yellow_cards: number;
   red_cards: number;
+  is_starter: boolean;
+  is_captain: boolean;
   created_at?: string;
   updated_at?: string;
 }

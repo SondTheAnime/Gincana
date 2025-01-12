@@ -1,5 +1,5 @@
 import Hero from '../components/home/Hero';
-import LiveGames from '../components/home/LiveGames';
+import LiveGames from '../components/home/LiveGames/LiveGames';
 import UpcomingMatches from '../components/home/UpcomingMatches';
 
 const Home = () => {
