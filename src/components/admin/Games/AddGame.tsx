@@ -1,5 +1,7 @@
 import { X } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { supabase } from '../../../lib/supabase';
+import { toast } from 'react-toastify';
 import { Team } from '../Teams/types';
 
 interface AddGameProps {
@@ -7,12 +9,22 @@ interface AddGameProps {
   onClose: () => void;
 }
 
+interface GameFormData {
+  sport: string;
+  category: string;
+  team_a: string;
+  team_b: string;
+  date: string;
+  time: string;
+  location: string;
+}
+
 const AddGame = ({ isOpen, onClose }: AddGameProps) => {
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<GameFormData>({
     sport: '',
     category: '',
-    teamA: '',
-    teamB: '',
+    team_a: '',
+    team_b: '',
     date: '',
     time: '',
     location: '',
@@ -20,26 +32,47 @@ const AddGame = ({ isOpen, onClose }: AddGameProps) => {
 
   const [teams, setTeams] = useState<Team[]>([]);
   const [filteredTeams, setFilteredTeams] = useState<Team[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [sports, setSports] = useState<string[]>([]);
 
-  const sports = ['Futsal', 'Vôlei', 'Basquete'];
   const categories = ['Masculino', 'Feminino', 'Misto'];
   const locations = ['Quadra Principal', 'Quadra Coberta'];
 
-  // TODO: Implementar busca de times do backend
   useEffect(() => {
-    // Simular busca de times
     const fetchTeams = async () => {
-      // Aqui você deve implementar a chamada real para sua API
-      const mockTeams: Team[] = [
-        { id: 1, name: 'Time A', category: 'Masculino', modality: 'Futsal', players: [], awards: [] },
-        { id: 2, name: 'Time B', category: 'Masculino', modality: 'Futsal', players: [], awards: [] },
-        { id: 3, name: 'Time C', category: 'Feminino', modality: 'Vôlei', players: [], awards: [] },
-        { id: 4, name: 'Time D', category: 'Feminino', modality: 'Vôlei', players: [], awards: [] },
-      ];
-      setTeams(mockTeams);
+      try {
+        const { data, error } = await supabase
+          .from('teams')
+          .select('*')
+          .order('name', { ascending: true });
+
+        if (error) throw error;
+        setTeams(data || []);
+      } catch (error) {
+        console.error('Erro ao buscar times:', error);
+        toast.error('Erro ao carregar times. Tente novamente.');
+      }
+    };
+
+    const fetchSports = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('modalities')
+          .select('name')
+          .eq('is_team_sport', true)
+          .eq('is_active', true)
+          .order('name');
+
+        if (error) throw error;
+        setSports(data.map(sport => sport.name));
+      } catch (error) {
+        console.error('Erro ao buscar modalidades:', error);
+        toast.error('Erro ao carregar modalidades. Tente novamente.');
+      }
     };
 
     fetchTeams();
+    fetchSports();
   }, []);
 
   useEffect(() => {
@@ -53,24 +86,49 @@ const AddGame = ({ isOpen, onClose }: AddGameProps) => {
     // Limpar seleção de times quando mudar modalidade ou categoria
     setFormData(prev => ({
       ...prev,
-      teamA: '',
-      teamB: ''
+      team_a: '',
+      team_b: ''
     }));
   }, [formData.sport, formData.category, teams]);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    // TODO: Implementar lógica para adicionar jogo
-    console.log('Novo jogo:', formData);
-    onClose();
-  };
-
-  const handleChange = (e: React.ChangeEvent<HTMLSelectElement | HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
       [name]: value
     }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      const { error } = await supabase
+        .from('games')
+        .insert([{
+          sport: formData.sport,
+          category: formData.category,
+          team_a: parseInt(formData.team_a),
+          team_b: parseInt(formData.team_b),
+          date: formData.date,
+          time: formData.time,
+          location: formData.location,
+          status: 'scheduled',
+          score_a: 0,
+          score_b: 0,
+        }]);
+
+      if (error) throw error;
+
+      toast.success('Jogo adicionado com sucesso!');
+      onClose();
+    } catch (error) {
+      console.error('Erro ao adicionar jogo:', error);
+      toast.error('Erro ao adicionar jogo. Tente novamente.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -131,8 +189,8 @@ const AddGame = ({ isOpen, onClose }: AddGameProps) => {
               Time A
             </label>
             <select
-              name="teamA"
-              value={formData.teamA}
+              name="team_a"
+              value={formData.team_a}
               onChange={handleChange}
               required
               disabled={!formData.sport || !formData.category}
@@ -140,7 +198,7 @@ const AddGame = ({ isOpen, onClose }: AddGameProps) => {
             >
               <option value="">Selecione o primeiro time</option>
               {filteredTeams
-                .filter(team => team.id.toString() !== formData.teamB)
+                .filter(team => team.id.toString() !== formData.team_b)
                 .map(team => (
                   <option key={team.id} value={team.id}>{team.name}</option>
                 ))
@@ -153,8 +211,8 @@ const AddGame = ({ isOpen, onClose }: AddGameProps) => {
               Time B
             </label>
             <select
-              name="teamB"
-              value={formData.teamB}
+              name="team_b"
+              value={formData.team_b}
               onChange={handleChange}
               required
               disabled={!formData.sport || !formData.category}
@@ -162,7 +220,7 @@ const AddGame = ({ isOpen, onClose }: AddGameProps) => {
             >
               <option value="">Selecione o segundo time</option>
               {filteredTeams
-                .filter(team => team.id.toString() !== formData.teamA)
+                .filter(team => team.id.toString() !== formData.team_a)
                 .map(team => (
                   <option key={team.id} value={team.id}>{team.name}</option>
                 ))
@@ -170,34 +228,32 @@ const AddGame = ({ isOpen, onClose }: AddGameProps) => {
             </select>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 sm:gap-4">
-            <div>
-              <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 sm:mb-2">
-                Data
-              </label>
-              <input
-                type="date"
-                name="date"
-                value={formData.date}
-                onChange={handleChange}
-                required
-                className="w-full rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white py-1.5 sm:py-2 px-2 sm:px-3 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-green-500 dark:focus:ring-green-400"
-              />
-            </div>
+          <div>
+            <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 sm:mb-2">
+              Data
+            </label>
+            <input
+              type="date"
+              name="date"
+              value={formData.date}
+              onChange={handleChange}
+              required
+              className="w-full rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white py-1.5 sm:py-2 px-2 sm:px-3 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-green-500 dark:focus:ring-green-400"
+            />
+          </div>
 
-            <div>
-              <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 sm:mb-2">
-                Horário
-              </label>
-              <input
-                type="time"
-                name="time"
-                value={formData.time}
-                onChange={handleChange}
-                required
-                className="w-full rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white py-1.5 sm:py-2 px-2 sm:px-3 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-green-500 dark:focus:ring-green-400"
-              />
-            </div>
+          <div>
+            <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 sm:mb-2">
+              Horário
+            </label>
+            <input
+              type="time"
+              name="time"
+              value={formData.time}
+              onChange={handleChange}
+              required
+              className="w-full rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white py-1.5 sm:py-2 px-2 sm:px-3 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-green-500 dark:focus:ring-green-400"
+            />
           </div>
 
           <div>
@@ -211,7 +267,7 @@ const AddGame = ({ isOpen, onClose }: AddGameProps) => {
               required
               className="w-full rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white py-1.5 sm:py-2 px-2 sm:px-3 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-green-500 dark:focus:ring-green-400"
             >
-              <option value="">Selecione um local</option>
+              <option value="">Selecione o local</option>
               {locations.map(location => (
                 <option key={location} value={location}>{location}</option>
               ))}
@@ -228,9 +284,10 @@ const AddGame = ({ isOpen, onClose }: AddGameProps) => {
             </button>
             <button
               type="submit"
-              className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-white bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 rounded-md"
+              disabled={loading}
+              className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-white bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Adicionar Jogo
+              {loading ? 'Adicionando...' : 'Adicionar Jogo'}
             </button>
           </div>
         </form>

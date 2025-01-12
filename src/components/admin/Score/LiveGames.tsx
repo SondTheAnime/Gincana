@@ -17,7 +17,7 @@ const LiveGames = ({ games, onSelectGame }: LiveGamesProps) => {
       <h2 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white px-2 sm:px-0">Jogos em Andamento</h2>
       
       <div className="grid gap-3 sm:gap-4 px-2 sm:px-0">
-        {games.filter(game => game.isLive).map(game => (
+        {games.filter(game => game.status === 'live').map(game => (
           <motion.div
             key={game.id}
             layoutId={`game-${game.id}`}
@@ -39,28 +39,28 @@ const LiveGames = ({ games, onSelectGame }: LiveGamesProps) => {
 
             <div className="grid grid-cols-3 gap-3 sm:gap-4 items-center">
               <div className="text-center">
-                <p className="text-sm sm:text-base font-medium text-gray-900 dark:text-white mb-1 sm:mb-2">{game.teamA}</p>
-                <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">{game.scoreA}</p>
+                <p className="text-sm sm:text-base font-medium text-gray-900 dark:text-white mb-1 sm:mb-2">{game.team_a_name}</p>
+                <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">{game.score_a}</p>
               </div>
 
               <div className="text-center">
                 <div className="flex items-center justify-center space-x-1 sm:space-x-2 mb-1">
                   <Clock className="h-3 w-3 sm:h-4 sm:w-4 text-gray-400 dark:text-gray-500" />
-                  <span className="text-xs sm:text-sm font-medium">{game.time}</span>
+                  <span className="text-xs sm:text-sm font-medium">{game.game_time}</span>
                 </div>
                 <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">{game.period}</span>
               </div>
 
               <div className="text-center">
-                <p className="text-sm sm:text-base font-medium text-gray-900 dark:text-white mb-1 sm:mb-2">{game.teamB}</p>
-                <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">{game.scoreB}</p>
+                <p className="text-sm sm:text-base font-medium text-gray-900 dark:text-white mb-1 sm:mb-2">{game.team_b_name}</p>
+                <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">{game.score_b}</p>
               </div>
             </div>
           </motion.div>
         ))}
       </div>
 
-      {games.filter(game => game.isLive).length === 0 && (
+      {games.filter(game => game.status === 'live').length === 0 && (
         <div className="text-center py-8 sm:py-12 bg-white dark:bg-gray-800 rounded-lg mx-2 sm:mx-0">
           <p className="text-sm sm:text-base text-gray-500 dark:text-gray-400">Nenhum jogo ao vivo no momento</p>
         </div>

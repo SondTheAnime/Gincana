@@ -1,9 +1,11 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Game, GameEvent, Player } from './types'
 import GameTimer from './GameTimer'
 import GameEvents from './GameEvents'
 import { X } from 'lucide-react'
+import { supabase } from '../../../lib/supabase'
+import { toast } from 'react-toastify'
 
 interface GameDetailsProps {
   game: Game
@@ -13,42 +15,133 @@ interface GameDetailsProps {
 
 const GameDetails = ({ game, onClose, onUpdateGame }: GameDetailsProps) => {
   const [events, setEvents] = useState<GameEvent[]>([])
+  const [players, setPlayers] = useState<Player[]>([])
+  const [loading, setLoading] = useState(true)
 
-  // Mock players - Em produção, isso viria do backend
-  const mockPlayers: Player[] = [
-    { id: 1, name: 'João Silva', number: 10, team: game.teamA },
-    { id: 2, name: 'Pedro Santos', number: 7, team: game.teamA },
-    { id: 3, name: 'Carlos Oliveira', number: 9, team: game.teamB },
-    { id: 4, name: 'Lucas Souza', number: 11, team: game.teamB },
-  ]
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Buscar jogadores dos times
+        const { data: playersData, error: playersError } = await supabase
+          .from('players')
+          .select('*')
+          .in('team_id', [game.team_a, game.team_b])
+          .order('name')
+
+        if (playersError) throw playersError
+
+        // Buscar eventos do jogo
+        const { data: eventsData, error: eventsError } = await supabase
+          .from('game_events')
+          .select('*')
+          .eq('game_id', game.id)
+          .order('created_at', { ascending: false })
+
+        if (eventsError) throw eventsError
+
+        setPlayers(playersData || [])
+        setEvents(eventsData || [])
+      } catch (error) {
+        console.error('Erro ao carregar dados:', error)
+        toast.error('Erro ao carregar dados do jogo. Tente novamente.')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    // Inscrever para atualizações em tempo real dos eventos
+    const subscription = supabase
+      .channel('game_events')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'game_events',
+          filter: `game_id.eq.${game.id}`
+        },
+        async (payload) => {
+          // Recarregar os eventos quando houver mudanças
+          const { data, error } = await supabase
+            .from('game_events')
+            .select('*')
+            .eq('game_id', game.id)
+            .order('created_at', { ascending: false })
+
+          if (error) {
+            console.error('Erro ao atualizar eventos:', error)
+            return
+          }
+
+          setEvents(data || [])
+        }
+      )
+      .subscribe()
+
+    fetchData()
+
+    return () => {
+      subscription.unsubscribe()
+    }
+  }, [game.id, game.team_a, game.team_b])
 
   const handleScoreChange = (team: 'A' | 'B', value: number) => {
     const updatedGame = {
       ...game,
-      [`score${team}`]: Math.max(0, value)
+      [team === 'A' ? 'score_a' : 'score_b']: Math.max(0, value)
     }
     onUpdateGame(updatedGame)
   }
 
   const handleTimeUpdate = (time: string) => {
-    onUpdateGame({ ...game, time })
+    onUpdateGame({ ...game, game_time: time })
   }
 
   const handlePeriodChange = (period: string) => {
     onUpdateGame({ ...game, period })
   }
 
-  const handleAddEvent = (newEvent: Omit<GameEvent, 'id'>) => {
-    const event = { ...newEvent, id: events.length + 1 }
-    setEvents([...events, event])
+  const handleAddEvent = async (newEvent: Omit<GameEvent, 'id' | 'created_at' | 'updated_at'>) => {
+    try {
+      const { data, error } = await supabase
+        .from('game_events')
+        .insert([{
+          ...newEvent,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }])
+        .select()
+        .single()
 
-    // Atualizar placar se for gol
-    if (newEvent.type === 'goal') {
-      handleScoreChange(
-        newEvent.team,
-        newEvent.team === 'A' ? game.scoreA + 1 : game.scoreB + 1
-      )
+      if (error) throw error
+
+      // Atualizar placar se for gol
+      if (newEvent.type === 'goal') {
+        handleScoreChange(
+          newEvent.team,
+          newEvent.team === 'A' ? game.score_a + 1 : game.score_b + 1
+        )
+      }
+
+      setEvents([data, ...events])
+      toast.success('Evento adicionado com sucesso!')
+    } catch (error) {
+      console.error('Erro ao adicionar evento:', error)
+      toast.error('Erro ao adicionar evento. Tente novamente.')
     }
+  }
+
+  if (loading) {
+    return (
+      <motion.div
+        layoutId={`game-${game.id}`}
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-2 sm:p-4"
+      >
+        <div className="flex justify-center items-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+        </div>
+      </motion.div>
+    )
   }
 
   return (
@@ -75,10 +168,12 @@ const GameDetails = ({ game, onClose, onUpdateGame }: GameDetailsProps) => {
 
         <div className="grid grid-cols-3 gap-4 sm:gap-8 mb-6 sm:mb-8">
           <div className="text-center">
-            <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white mb-3 sm:mb-4">{game.teamA}</h3>
+            <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white mb-3 sm:mb-4">
+              {game.team_a_name}
+            </h3>
             <input
               type="number"
-              value={game.scoreA}
+              value={game.score_a}
               onChange={(e) => handleScoreChange('A', parseInt(e.target.value))}
               min="0"
               className="w-20 sm:w-24 text-center text-3xl sm:text-4xl font-bold bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg py-1.5 sm:py-2"
@@ -86,7 +181,7 @@ const GameDetails = ({ game, onClose, onUpdateGame }: GameDetailsProps) => {
           </div>
 
           <div className="text-center space-y-3 sm:space-y-4">
-            <GameTimer initialTime={game.time} onTimeUpdate={handleTimeUpdate} />
+            <GameTimer initialTime={game.game_time} onTimeUpdate={handleTimeUpdate} />
             
             <select
               value={game.period}
@@ -102,10 +197,12 @@ const GameDetails = ({ game, onClose, onUpdateGame }: GameDetailsProps) => {
           </div>
 
           <div className="text-center">
-            <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white mb-3 sm:mb-4">{game.teamB}</h3>
+            <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white mb-3 sm:mb-4">
+              {game.team_b_name}
+            </h3>
             <input
               type="number"
-              value={game.scoreB}
+              value={game.score_b}
               onChange={(e) => handleScoreChange('B', parseInt(e.target.value))}
               min="0"
               className="w-20 sm:w-24 text-center text-3xl sm:text-4xl font-bold bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg py-1.5 sm:py-2"
@@ -115,7 +212,7 @@ const GameDetails = ({ game, onClose, onUpdateGame }: GameDetailsProps) => {
 
         <GameEvents
           game={game}
-          players={mockPlayers}
+          players={players}
           onAddEvent={handleAddEvent}
         />
       </div>

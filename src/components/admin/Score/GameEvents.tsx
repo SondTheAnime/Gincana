@@ -1,169 +1,125 @@
 import { useState } from 'react'
-import { GameEvent, Game, Player } from './types'
-import { Plus, Goal, Award, Square } from 'lucide-react'
+import { Game, GameEvent, Player, EventType } from './types'
+import { Plus } from 'lucide-react'
 
 interface GameEventsProps {
   game: Game
   players: Player[]
-  onAddEvent: (event: Omit<GameEvent, 'id'>) => void
+  onAddEvent: (event: Omit<GameEvent, 'id' | 'created_at' | 'updated_at'>) => void
 }
 
+const EVENT_TYPES: { value: EventType; label: string }[] = [
+  { value: 'goal', label: 'Gol' },
+  { value: 'assist', label: 'Assistência' },
+  { value: 'yellowCard', label: 'Cartão Amarelo' },
+  { value: 'redCard', label: 'Cartão Vermelho' }
+]
+
 const GameEvents = ({ game, players, onAddEvent }: GameEventsProps) => {
-  const [showForm, setShowForm] = useState(false)
-  const [selectedType, setSelectedType] = useState<GameEvent['type']>('goal')
   const [selectedTeam, setSelectedTeam] = useState<'A' | 'B'>('A')
-  const [selectedPlayer, setSelectedPlayer] = useState('')
-  const [minute, setMinute] = useState('')
+  const [selectedType, setSelectedType] = useState<EventType>('goal')
+  const [selectedPlayer, setSelectedPlayer] = useState<string>('')
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     
-    const player = players.find(p => p.id.toString() === selectedPlayer)
-    if (!player) return
+    if (!selectedPlayer) return
 
-    const newEvent: Omit<GameEvent, 'id'> = {
-      gameId: game.id,
-      type: selectedType,
-      playerId: player.id,
-      playerName: player.name,
+    onAddEvent({
+      game_id: game.id,
+      player_id: parseInt(selectedPlayer),
       team: selectedTeam,
-      timestamp: new Date().toISOString(),
-      minute: parseInt(minute)
-    }
+      type: selectedType
+    })
 
-    onAddEvent(newEvent)
-    setShowForm(false)
-    resetForm()
-  }
-
-  const resetForm = () => {
-    setSelectedType('goal')
-    setSelectedTeam('A')
+    // Resetar seleções
     setSelectedPlayer('')
-    setMinute('')
   }
 
-  const eventIcons = {
-    goal: <Goal className="h-5 w-5" />,
-    assist: <Award className="h-5 w-5" />,
-    yellowCard: <Square className="h-5 w-5 text-yellow-400" />,
-    redCard: <Square className="h-5 w-5 text-red-500" />
-  }
+  const teamPlayers = players.filter(player => 
+    selectedTeam === 'A' ? player.team_id === game.team_a : player.team_id === game.team_b
+  )
 
   return (
-    <div className="space-y-3 sm:space-y-4">
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-2 sm:space-y-0">
-        <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">Eventos da Partida</h3>
-        <button
-          onClick={() => setShowForm(true)}
-          className="flex items-center justify-center sm:justify-start space-x-1 sm:space-x-2 px-3 py-1.5 sm:py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-sm"
-        >
-          <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-          <span>Adicionar Evento</span>
-        </button>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Eventos do Jogo</h3>
+        <form onSubmit={handleSubmit} className="flex gap-2">
+          <select
+            value={selectedTeam}
+            onChange={(e) => setSelectedTeam(e.target.value as 'A' | 'B')}
+            className="rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white py-1.5 px-2 text-sm"
+          >
+            <option value="A">{game.team_a_name}</option>
+            <option value="B">{game.team_b_name}</option>
+          </select>
+
+          <select
+            value={selectedType}
+            onChange={(e) => setSelectedType(e.target.value as EventType)}
+            className="rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white py-1.5 px-2 text-sm"
+          >
+            {EVENT_TYPES.map(type => (
+              <option key={type.value} value={type.value}>
+                {type.label}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={selectedPlayer}
+            onChange={(e) => setSelectedPlayer(e.target.value)}
+            className="rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white py-1.5 px-2 text-sm"
+          >
+            <option value="">Selecione um jogador</option>
+            {teamPlayers.map(player => (
+              <option key={player.id} value={player.id}>
+                {player.number} - {player.name}
+              </option>
+            ))}
+          </select>
+
+          <button
+            type="submit"
+            disabled={!selectedPlayer}
+            className="inline-flex items-center gap-1 rounded-md bg-blue-600 px-2.5 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Plus className="h-4 w-4" />
+            Adicionar
+          </button>
+        </form>
       </div>
 
-      {showForm && (
-        <form onSubmit={handleSubmit} className="bg-white dark:bg-gray-800 rounded-lg p-3 sm:p-4 space-y-3 sm:space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-            <div>
-              <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Tipo de Evento
-              </label>
-              <select
-                value={selectedType}
-                onChange={(e) => setSelectedType(e.target.value as GameEvent['type'])}
-                className="w-full rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white py-1.5 sm:py-2 px-2 sm:px-3 text-sm"
-              >
-                <option value="goal" className="flex items-center">
-                  <div className="flex items-center">
-                    {eventIcons.goal} Gol
-                  </div>
-                </option>
-                <option value="assist">
-                  <div className="flex items-center">
-                    {eventIcons.assist} Assistência
-                  </div>
-                </option>
-                <option value="yellowCard">
-                  <div className="flex items-center">
-                    {eventIcons.yellowCard} Cartão Amarelo
-                  </div>
-                </option>
-                <option value="redCard">
-                  <div className="flex items-center">
-                    {eventIcons.redCard} Cartão Vermelho
-                  </div>
-                </option>
-              </select>
-            </div>
+      <div className="space-y-2">
+        {game.highlights?.map((event, index) => {
+          const player = players.find(p => p.id === event.player_id)
+          const eventType = EVENT_TYPES.find(t => t.value === event.type)
+          
+          if (!player || !eventType) return null
 
-            <div>
-              <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Time
-              </label>
-              <select
-                value={selectedTeam}
-                onChange={(e) => setSelectedTeam(e.target.value as 'A' | 'B')}
-                className="w-full rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white py-1.5 sm:py-2 px-2 sm:px-3 text-sm"
-              >
-                <option value="A">{game.teamA}</option>
-                <option value="B">{game.teamB}</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Jogador
-              </label>
-              <select
-                value={selectedPlayer}
-                onChange={(e) => setSelectedPlayer(e.target.value)}
-                className="w-full rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white py-1.5 sm:py-2 px-2 sm:px-3 text-sm"
-              >
-                <option value="">Selecione um jogador</option>
-                {players
-                  .filter(p => p.team === (selectedTeam === 'A' ? game.teamA : game.teamB))
-                  .map(player => (
-                    <option key={player.id} value={player.id}>
-                      {player.number} - {player.name}
-                    </option>
-                  ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Minuto
-              </label>
-              <input
-                type="number"
-                value={minute}
-                onChange={(e) => setMinute(e.target.value)}
-                min="0"
-                className="w-full rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white py-1.5 sm:py-2 px-2 sm:px-3 text-sm"
-                placeholder="Minuto do evento"
-              />
-            </div>
-          </div>
-
-          <div className="flex justify-end space-x-2 sm:space-x-3">
-            <button
-              type="button"
-              onClick={() => setShowForm(false)}
-              className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
+          return (
+            <div
+              key={index}
+              className="flex items-center justify-between py-2 px-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
             >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
-            >
-              Salvar
-            </button>
-          </div>
-        </form>
-      )}
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-gray-900 dark:text-white">
+                  {event.team === 'A' ? game.team_a_name : game.team_b_name}
+                </span>
+                <span className="text-sm text-gray-500 dark:text-gray-400">
+                  {eventType.label} - {player.name}
+                </span>
+              </div>
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                {new Date(event.created_at).toLocaleTimeString('pt-BR', {
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })}
+              </span>
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }

@@ -1,6 +1,7 @@
 import { X, Trophy, Upload, Image } from 'lucide-react';
-import { Team, Player } from './types';
-import { useState } from 'react';
+import { Team, Player, Award, SportType, CategoryType } from './types';
+import { useState, useEffect } from 'react';
+import { supabase } from '../../../lib/supabase';
 
 interface TeamModalsProps {
   isAddingTeam: boolean;
@@ -9,11 +10,9 @@ interface TeamModalsProps {
   isEditingTeam: boolean;
   editingPlayer: Player | null;
   editingTeam: Team | null;
-  newTeam: { name: string; category: string; modality: string };
-  newPlayer: { name: string; number: string; position: string };
-  positions: string[];
-  modalities: string[];
-  newAward: string;
+  newTeam: { name: string; category: CategoryType; modality: SportType };
+  newPlayer: { name: string; number: string; photo?: string };
+  awards: Award[];
   onCloseAddTeam: () => void;
   onCloseAddPlayer: () => void;
   onCloseEditPlayer: () => void;
@@ -27,9 +26,10 @@ interface TeamModalsProps {
   onChangeEditingPlayer: (field: string, value: string | number | boolean) => void;
   onChangeEditingTeam: (field: string, value: string) => void;
   onAddAward: (e: React.FormEvent) => void;
-  onRemoveAward: (award: string) => void;
-  onChangeNewAward: (value: string) => void;
+  onRemoveAward: (awardId: number) => void;
 }
+
+const CATEGORIES: CategoryType[] = ['Masculino', 'Feminino', 'Misto'];
 
 const TeamModals = ({
   isAddingTeam,
@@ -40,9 +40,7 @@ const TeamModals = ({
   editingTeam,
   newTeam,
   newPlayer,
-  positions,
-  modalities,
-  newAward,
+  awards,
   onCloseAddTeam,
   onCloseAddPlayer,
   onCloseEditPlayer,
@@ -56,25 +54,57 @@ const TeamModals = ({
   onChangeEditingPlayer,
   onChangeEditingTeam,
   onAddAward,
-  onRemoveAward,
-  onChangeNewAward
+  onRemoveAward
 }: TeamModalsProps) => {
-  const [tempPhoto, setTempPhoto] = useState<string | null>(null);
+  const [newAwardTitle, setNewAwardTitle] = useState('');
+  const [modalities, setModalities] = useState<{ name: string }[]>([]);
 
-  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>, isEditing: boolean) => {
+  useEffect(() => {
+    const fetchModalities = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('modalities')
+          .select('name')
+          .eq('is_team_sport', true)
+          .eq('is_active', true)
+          .order('name');
+
+        if (error) throw error;
+        setModalities(data || []);
+      } catch (error) {
+        console.error('Erro ao buscar modalidades:', error);
+      }
+    };
+
+    fetchModalities();
+  }, []);
+
+  const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>, isEditing: boolean) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64String = reader.result as string;
-        if (isEditing) {
-          onChangeEditingPlayer('photo', base64String);
-        } else {
-          onChangeNewPlayer('photo', base64String);
-        }
-        setTempPhoto(base64String);
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random()}.${fileExt}`;
+      const filePath = `player-photos/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('photos')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('photos')
+        .getPublicUrl(filePath);
+
+      if (isEditing) {
+        onChangeEditingPlayer('photo', publicUrl);
+      } else {
+        onChangeNewPlayer('photo', publicUrl);
+      }
+    } catch (error) {
+      console.error('Erro ao fazer upload da foto:', error);
     }
   };
 
@@ -118,8 +148,9 @@ const TeamModals = ({
                   onChange={(e) => onChangeNewTeam('modality', e.target.value)}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white text-xs sm:text-sm py-1.5 sm:py-2"
                 >
+                  <option value="">Selecione uma modalidade</option>
                   {modalities.map((modality) => (
-                    <option key={modality} value={modality}>{modality}</option>
+                    <option key={modality.name} value={modality.name}>{modality.name}</option>
                   ))}
                 </select>
               </div>
@@ -133,9 +164,9 @@ const TeamModals = ({
                   onChange={(e) => onChangeNewTeam('category', e.target.value)}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white text-xs sm:text-sm py-1.5 sm:py-2"
                 >
-                  <option value="Masculino">Masculino</option>
-                  <option value="Feminino">Feminino</option>
-                  <option value="Misto">Misto</option>
+                  {CATEGORIES.map((category) => (
+                    <option key={category} value={category}>{category}</option>
+                  ))}
                 </select>
               </div>
               <div className="flex justify-end space-x-2 sm:space-x-3 mt-4 sm:mt-6">
@@ -179,9 +210,9 @@ const TeamModals = ({
                 </label>
                 <div className="flex items-center space-x-3 sm:space-x-4">
                   <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center overflow-hidden">
-                    {tempPhoto ? (
+                    {newPlayer.photo ? (
                       <img 
-                        src={tempPhoto} 
+                        src={newPlayer.photo} 
                         alt="Preview" 
                         className="h-full w-full object-cover"
                       />
@@ -227,21 +258,6 @@ const TeamModals = ({
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white text-xs sm:text-sm py-1.5 sm:py-2"
                   required
                 />
-              </div>
-              <div>
-                <label htmlFor="position" className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Posição
-                </label>
-                <select
-                  id="position"
-                  value={newPlayer.position}
-                  onChange={(e) => onChangeNewPlayer('position', e.target.value)}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white text-xs sm:text-sm py-1.5 sm:py-2"
-                >
-                  {positions.map((pos) => (
-                    <option key={pos} value={pos}>{pos}</option>
-                  ))}
-                </select>
               </div>
               <div className="flex justify-end space-x-2 sm:space-x-3 mt-4 sm:mt-6">
                 <button
@@ -326,72 +342,13 @@ const TeamModals = ({
                   Número
                 </label>
                 <input
-                  type="text"
+                  type="number"
                   id="editPlayerNumber"
                   value={editingPlayer.number}
-                  onChange={(e) => onChangeEditingPlayer('number', e.target.value)}
+                  onChange={(e) => onChangeEditingPlayer('number', parseInt(e.target.value))}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white text-xs sm:text-sm py-1.5 sm:py-2"
                   required
                 />
-              </div>
-
-              <div>
-                <label htmlFor="editPosition" className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Posição
-                </label>
-                <select
-                  id="editPosition"
-                  value={editingPlayer.position}
-                  onChange={(e) => onChangeEditingPlayer('position', e.target.value)}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white text-xs sm:text-sm py-1.5 sm:py-2"
-                >
-                  {positions.map((pos) => (
-                    <option key={pos} value={pos}>{pos}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                <div>
-                  <label htmlFor="yellowCards" className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Cartões Amarelos
-                  </label>
-                  <input
-                    type="number"
-                    id="yellowCards"
-                    min="0"
-                    value={editingPlayer.yellowCards}
-                    onChange={(e) => onChangeEditingPlayer('yellowCards', parseInt(e.target.value))}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white text-xs sm:text-sm py-1.5 sm:py-2"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="redCards" className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Cartões Vermelhos
-                  </label>
-                  <input
-                    type="number"
-                    id="redCards"
-                    min="0"
-                    value={editingPlayer.redCards}
-                    onChange={(e) => onChangeEditingPlayer('redCards', parseInt(e.target.value))}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white text-xs sm:text-sm py-1.5 sm:py-2"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  id="suspended"
-                  checked={editingPlayer.suspended}
-                  onChange={(e) => onChangeEditingPlayer('suspended', e.target.checked)}
-                  className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
-                />
-                <label htmlFor="suspended" className="ml-2 block text-xs sm:text-sm text-gray-700 dark:text-gray-300">
-                  Jogador Suspenso
-                </label>
               </div>
 
               <div className="flex justify-end space-x-2 sm:space-x-3 mt-4 sm:mt-6">
@@ -454,7 +411,7 @@ const TeamModals = ({
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white text-xs sm:text-sm py-1.5 sm:py-2"
                 >
                   {modalities.map((modality) => (
-                    <option key={modality} value={modality}>{modality}</option>
+                    <option key={modality.name} value={modality.name}>{modality.name}</option>
                   ))}
                 </select>
               </div>
@@ -469,9 +426,9 @@ const TeamModals = ({
                   onChange={(e) => onChangeEditingTeam('category', e.target.value)}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white text-xs sm:text-sm py-1.5 sm:py-2"
                 >
-                  <option value="Masculino">Masculino</option>
-                  <option value="Feminino">Feminino</option>
-                  <option value="Misto">Misto</option>
+                  {CATEGORIES.map((category) => (
+                    <option key={category} value={category}>{category}</option>
+                  ))}
                 </select>
               </div>
 
@@ -483,32 +440,38 @@ const TeamModals = ({
                   <div className="flex space-x-2">
                     <input
                       type="text"
-                      value={newAward}
-                      onChange={(e) => onChangeNewAward(e.target.value)}
+                      value={newAwardTitle}
+                      onChange={(e) => setNewAwardTitle(e.target.value)}
                       placeholder="Adicionar conquista..."
                       className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white text-xs sm:text-sm py-1.5 sm:py-2"
                     />
                     <button
                       type="button"
-                      onClick={onAddAward}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (newAwardTitle.trim()) {
+                          onAddAward(e);
+                          setNewAwardTitle('');
+                        }
+                      }}
                       className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-white bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 rounded-md"
                     >
                       Adicionar
                     </button>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {editingTeam.awards.map((award, index) => (
+                    {awards.map((award) => (
                       <div
-                        key={index}
+                        key={award.id}
                         className="bg-yellow-100 dark:bg-yellow-900 px-2 py-1 rounded-md flex items-center space-x-1"
                       >
                         <Trophy className="h-3 w-3 sm:h-4 sm:w-4 text-yellow-600 dark:text-yellow-400" />
                         <span className="text-yellow-700 dark:text-yellow-300 text-xs sm:text-sm">
-                          {award}
+                          {award.title}
                         </span>
                         <button
                           type="button"
-                          onClick={() => onRemoveAward(award)}
+                          onClick={() => onRemoveAward(award.id)}
                           className="text-yellow-600 dark:text-yellow-400 hover:text-yellow-700 dark:hover:text-yellow-300"
                           aria-label="Remover conquista"
                         >
@@ -541,6 +504,6 @@ const TeamModals = ({
       )}
     </>
   );
-};
+}
 
 export default TeamModals; 

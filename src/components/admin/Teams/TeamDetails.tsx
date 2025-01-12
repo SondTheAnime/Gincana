@@ -1,13 +1,15 @@
-import { Shield, UserPlus, AlertTriangle, User, Edit, Trash2 } from 'lucide-react';
+import { Shield, UserPlus, User, Edit, Trash2 } from 'lucide-react';
 import { Team, Player } from './types';
 
 interface TeamDetailsProps {
   selectedTeam: Team | null;
+  players: Player[];
   onAddPlayer: () => void;
   onEditPlayer: (player: Player) => void;
+  onDeletePlayer?: (player: Player) => void;
 }
 
-const TeamDetails = ({ selectedTeam, onAddPlayer, onEditPlayer }: TeamDetailsProps) => {
+const TeamDetails = ({ selectedTeam, players, onAddPlayer, onEditPlayer, onDeletePlayer }: TeamDetailsProps) => {
   if (!selectedTeam) {
     return (
       <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-lg shadow-lg p-3 sm:p-6 flex items-center justify-center">
@@ -46,7 +48,7 @@ const TeamDetails = ({ selectedTeam, onAddPlayer, onEditPlayer }: TeamDetailsPro
 
       {/* Players List */}
       <div className="space-y-3 sm:space-y-4">
-        {selectedTeam.players.map(player => (
+        {players.map(player => (
           <div
             key={player.id}
             className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 sm:p-4"
@@ -68,57 +70,40 @@ const TeamDetails = ({ selectedTeam, onAddPlayer, onEditPlayer }: TeamDetailsPro
                   <p className="text-sm sm:text-base font-medium text-gray-900 dark:text-white">{player.name}</p>
                   <div className="flex items-center space-x-2 text-xs sm:text-sm text-gray-500 dark:text-gray-400">
                     <span>#{player.number}</span>
-                    <span>•</span>
-                    <span>{player.position}</span>
                   </div>
                 </div>
               </div>
 
-              <div className="flex items-center justify-between sm:justify-end sm:space-x-4">
-                {/* Status Indicators */}
-                <div className="flex items-center space-x-1 sm:space-x-2">
-                  {player.yellowCards > 0 && (
-                    <div className="bg-yellow-100 dark:bg-yellow-900 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-md">
-                      <span className="text-yellow-700 dark:text-yellow-300 text-xs sm:text-sm">
-                        {player.yellowCards} CA
-                      </span>
-                    </div>
-                  )}
-                  {player.redCards > 0 && (
-                    <div className="bg-red-100 dark:bg-red-900 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-md">
-                      <span className="text-red-700 dark:text-red-300 text-xs sm:text-sm">
-                        {player.redCards} CV
-                      </span>
-                    </div>
-                  )}
-                  {player.suspended && (
-                    <div className="bg-gray-100 dark:bg-gray-600 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-md flex items-center space-x-1">
-                      <AlertTriangle className="h-3 w-3 sm:h-4 sm:w-4 text-gray-500 dark:text-gray-400" />
-                      <span className="text-gray-700 dark:text-gray-300 text-xs sm:text-sm">Suspenso</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Actions */}
-                <div className="flex items-center space-x-1 sm:space-x-2">
+              {/* Actions */}
+              <div className="flex items-center space-x-1 sm:space-x-2">
+                <button 
+                  onClick={() => onEditPlayer(player)}
+                  className="p-1 text-gray-400 hover:text-green-600 dark:hover:text-green-400"
+                  aria-label="Editar jogador"
+                >
+                  <Edit className="h-3 w-3 sm:h-4 sm:w-4" />
+                </button>
+                {onDeletePlayer && (
                   <button 
-                    onClick={() => onEditPlayer(player)}
-                    className="p-1 text-gray-400 hover:text-green-600 dark:hover:text-green-400"
-                    aria-label="Editar jogador"
-                  >
-                    <Edit className="h-3 w-3 sm:h-4 sm:w-4" />
-                  </button>
-                  <button 
+                    onClick={() => onDeletePlayer(player)}
                     className="p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400"
                     aria-label="Remover jogador"
                   >
                     <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
                   </button>
-                </div>
+                )}
               </div>
             </div>
           </div>
         ))}
+
+        {players.length === 0 && (
+          <div className="text-center py-8">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Nenhum jogador cadastrado
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

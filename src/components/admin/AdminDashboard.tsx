@@ -1,4 +1,4 @@
-import { Plus, Calendar, Trophy, Users, LogOut } from 'lucide-react';
+import { Plus, Calendar, Trophy, Users, LogOut, Dumbbell } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
@@ -6,10 +6,11 @@ import AddGame from './Games/AddGame';
 import ManageCalendar from './Calendar/ManageCalendar';
 import ManageScore from './Score/ManageScore';
 import ManageTeams from './Teams/ManageTeams';
+import ManageModalities from './Modalities/ManageModalities';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
-  const [activeComponent, setActiveComponent] = useState<'calendar' | 'score' | 'teams' | null>(null);
+  const [activeComponent, setActiveComponent] = useState<'calendar' | 'score' | 'teams' | 'modalities' | null>(null);
   const [isAddGameModalOpen, setIsAddGameModalOpen] = useState(false);
 
   const handleLogout = async () => {
@@ -29,6 +30,8 @@ const AdminDashboard = () => {
         return <ManageScore />;
       case 'teams':
         return <ManageTeams />;
+      case 'modalities':
+        return <ManageModalities />;
       default:
         return null;
     }
@@ -66,6 +69,14 @@ const AdminDashboard = () => {
       subtitle: 'Administrar equipes',
       action: 'Gerenciar times',
       onClick: () => setActiveComponent('teams')
+    },
+    {
+      id: 'modalities',
+      icon: <Dumbbell className="h-5 w-5 md:h-6 md:w-6 text-green-600 dark:text-green-400" />,
+      title: 'Gerenciar Modalidades',
+      subtitle: 'Administrar esportes',
+      action: 'Gerenciar modalidades',
+      onClick: () => setActiveComponent('modalities')
     }
   ];
 
@@ -86,7 +97,7 @@ const AdminDashboard = () => {
             </button>
           </div>
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
             {cards.map((card) => (
               <div 
                 key={card.id}

@@ -1,77 +1,102 @@
-import { useState } from 'react';
-import { Calendar, Filter, ChevronDown } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { ChevronDown, Filter } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
+import { toast } from 'react-toastify';
+
+interface Match {
+  id: number;
+  date: string;
+  time: string;
+  sport: string;
+  team_a: number;
+  team_b: number;
+  team_a_name?: string;
+  team_b_name?: string;
+  location: string;
+  category: string;
+  status: 'scheduled' | 'live' | 'finished' | 'cancelled';
+}
 
 const UpcomingMatches = () => {
-  const [selectedSport, setSelectedSport] = useState<string>('all');
-  const [selectedMonth, setSelectedMonth] = useState<string>('2024-03');
+  const [matches, setMatches] = useState<Match[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedMonth, setSelectedMonth] = useState('2024-03');
+  const [selectedSport, setSelectedSport] = useState('all');
+  const [sports, setSports] = useState<string[]>([]);
 
-  const matches = [
-    {
-      id: 1,
-      date: '2024-03-20',
-      time: '14:00',
-      sport: 'Futsal',
-      teamA: 'Edificações',
-      teamB: 'Mineração',
-      location: 'Quadra Principal',
-      category: 'Masculino'
-    },
-    {
-      id: 2,
-      date: '2024-03-20',
-      time: '15:30',
-      sport: 'Basquete',
-      teamA: 'Informática',
-      teamB: 'Química',
-      location: 'Quadra Coberta',
-      category: 'Misto'
-    },
-    {
-      id: 3,
-      date: '2024-03-21',
-      time: '13:00',
-      sport: 'Vôlei',
-      teamA: 'Mecânica',
-      teamB: 'Eletrotécnica',
-      location: 'Quadra Principal',
-      category: 'Feminino'
-    },
-    {
-      id: 4,
-      date: '2024-03-25',
-      time: '14:00',
-      sport: 'Futsal',
-      teamA: 'Química',
-      teamB: 'Edificações',
-      location: 'Quadra Principal',
-      category: 'Feminino'
-    }
-  ];
+  useEffect(() => {
+    const fetchSports = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('modalities')
+          .select('name')
+          .eq('is_team_sport', true)
+          .eq('is_active', true)
+          .order('name');
 
-  const sports = ['Futsal', 'Basquete', 'Vôlei'];
-  
-  const filteredMatches = matches.filter(match => {
-    if (selectedSport !== 'all' && match.sport !== selectedSport) return false;
-    if (!match.date.startsWith(selectedMonth)) return false;
-    return true;
-  });
+        if (error) throw error;
+        setSports(data.map(sport => sport.name));
+      } catch (error) {
+        console.error('Erro ao buscar modalidades:', error);
+        toast.error('Erro ao carregar modalidades');
+      }
+    };
 
-  const groupedMatches = filteredMatches.reduce((groups, match) => {
-    const date = match.date;
-    if (!groups[date]) {
-      groups[date] = [];
-    }
-    groups[date].push(match);
-    return groups;
-  }, {} as Record<string, typeof matches>);
+    fetchSports();
+  }, []);
+
+  useEffect(() => {
+    const fetchMatches = async () => {
+      try {
+        const startDate = `${selectedMonth}-01`;
+        const endDate = `${selectedMonth}-31`;
+
+        let query = supabase
+          .from('games')
+          .select(`
+            *,
+            team_a_name:teams!games_team_a_fkey(name),
+            team_b_name:teams!games_team_b_fkey(name)
+          `)
+          .gte('date', startDate)
+          .lte('date', endDate)
+          .eq('status', 'scheduled')
+          .order('date')
+          .order('time');
+
+        if (selectedSport !== 'all') {
+          query = query.eq('sport', selectedSport);
+        }
+
+        const { data, error } = await query;
+
+        if (error) throw error;
+        setMatches(data || []);
+      } catch (error) {
+        console.error('Erro ao buscar jogos:', error);
+        toast.error('Erro ao carregar jogos');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMatches();
+  }, [selectedMonth, selectedSport]);
+
+  if (loading) {
+    return (
+      <div className="container mx-auto px-3 lg:px-6 py-4 md:py-8 lg:py-12">
+        <div className="flex justify-center items-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500"></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-3 lg:px-6 py-4 md:py-8 lg:py-12">
       <div className="flex flex-col space-y-3 mb-6">
-        <div className="flex items-center space-x-3">
-          <Calendar className="h-5 w-5 md:h-6 md:w-6 text-green-600 dark:text-green-400" />
-          <h2 className="text-lg md:text-2xl font-bold dark:text-white">Calendário de Jogos</h2>
-        </div>
+        <h2 className="text-lg md:text-2xl font-bold dark:text-white">Próximos Jogos</h2>
         <div className="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-4">
           <div className="relative w-full md:w-48">
             <select
@@ -101,64 +126,44 @@ const UpcomingMatches = () => {
         </div>
       </div>
 
-      {Object.entries(groupedMatches).map(([date, dayMatches]) => (
-        <div key={date} className="mb-6">
-          <h3 className="text-sm md:text-base lg:text-lg font-semibold text-gray-700 dark:text-gray-200 mb-3">
-            {new Date(date).toLocaleDateString('pt-BR', {
-              weekday: 'long',
-              day: 'numeric',
-              month: 'long',
-              year: 'numeric'
-            })}
-          </h3>
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
-            <div className="divide-y divide-gray-200 dark:divide-gray-700">
-              {dayMatches.map(match => (
-                <div key={match.id} className="p-3 md:p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-                  <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0">
-                    <div className="flex items-center justify-between md:w-1/3">
-                      <div className="flex items-center space-x-2 md:space-x-3">
-                        <div className="bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 px-2 md:px-3 py-1 rounded-full text-xs md:text-sm font-medium">
-                          {match.time}
-                        </div>
-                        <div>
-                          <p className="text-sm md:text-base font-medium text-gray-900 dark:text-white">{match.sport}</p>
-                          <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400">{match.category}</p>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-center md:w-1/3">
-                      <div className="flex items-center space-x-3 md:space-x-6">
-                        <div className="text-right flex-1">
-                          <p className="text-sm md:text-base font-semibold text-gray-900 dark:text-white truncate max-w-[120px] md:max-w-[160px]">{match.teamA}</p>
-                        </div>
-                        <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 font-medium px-2">VS</p>
-                        <div className="text-left flex-1">
-                          <p className="text-sm md:text-base font-semibold text-gray-900 dark:text-white truncate max-w-[120px] md:max-w-[160px]">{match.teamB}</p>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="text-xs md:text-sm text-gray-500 dark:text-gray-400 text-right md:w-1/3 md:pl-4">
-                      {match.location}
-                    </div>
+      {matches.length === 0 ? (
+        <div className="text-center py-12">
+          <p className="text-gray-500 dark:text-gray-400">Nenhum jogo encontrado para este período.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {matches.map((match) => (
+            <div
+              key={match.id}
+              className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden"
+            >
+              <div className="p-4">
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-sm text-gray-500 dark:text-gray-400">
+                    {new Date(match.date).toLocaleDateString('pt-BR')} às {match.time}
+                  </span>
+                  <span className="text-xs font-medium text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/30 px-2 py-1 rounded">
+                    {match.sport}
+                  </span>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium dark:text-white">{match.team_a_name}</span>
+                    <span className="text-sm text-gray-500 dark:text-gray-400">VS</span>
+                    <span className="font-medium dark:text-white">{match.team_b_name}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
+                    <span>{match.category}</span>
+                    <span>{match.location}</span>
                   </div>
                 </div>
-              ))}
+              </div>
             </div>
-          </div>
-        </div>
-      ))}
-
-      {Object.keys(groupedMatches).length === 0 && (
-        <div className="text-center py-6 md:py-8 lg:py-12 bg-white dark:bg-gray-800 rounded-lg shadow-md">
-          <Calendar className="h-8 w-8 md:h-10 md:w-10 lg:h-12 lg:w-12 text-gray-400 dark:text-gray-300 mx-auto mb-2 md:mb-4" />
-          <p className="text-sm md:text-base lg:text-lg text-gray-500 dark:text-gray-300">
-            Nenhum jogo encontrado para os filtros selecionados
-          </p>
+          ))}
         </div>
       )}
     </div>
   );
-}
+};
 
 export default UpcomingMatches;

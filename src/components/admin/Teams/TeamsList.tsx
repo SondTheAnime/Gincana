@@ -1,14 +1,15 @@
-import { Shield, Medal, Trophy, Edit } from 'lucide-react';
-import { Team } from './types';
+import { Shield, Trophy, Edit } from 'lucide-react';
+import { Team, Award } from './types';
 
 interface TeamsListProps {
   teams: Team[];
   selectedTeam: Team | null;
   onSelectTeam: (team: Team) => void;
   onEditTeam: (team: Team) => void;
+  awards: Record<number, Award[]>;
 }
 
-const TeamsList = ({ teams, selectedTeam, onSelectTeam, onEditTeam }: TeamsListProps) => {
+const TeamsList = ({ teams, selectedTeam, onSelectTeam, onEditTeam, awards }: TeamsListProps) => {
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-3 sm:p-6">
       <div className="flex items-center space-x-2 mb-3 sm:mb-4">
@@ -36,12 +37,6 @@ const TeamsList = ({ teams, selectedTeam, onSelectTeam, onEditTeam }: TeamsListP
                 </div>
               </div>
               <div className="flex items-center justify-between sm:justify-end sm:space-x-4">
-                <div className="flex items-center space-x-1 sm:space-x-2">
-                  <Medal className="h-3 w-3 sm:h-4 sm:w-4 text-gray-400" />
-                  <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-                    {team.players.length} jogadores
-                  </span>
-                </div>
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -54,16 +49,16 @@ const TeamsList = ({ teams, selectedTeam, onSelectTeam, onEditTeam }: TeamsListP
                 </button>
               </div>
             </div>
-            {team.awards.length > 0 && (
+            {awards[team.id]?.length > 0 && (
               <div className="mt-2 flex flex-wrap gap-1 sm:gap-2">
-                {team.awards.map((award, index) => (
+                {awards[team.id].map((award) => (
                   <div
-                    key={index}
+                    key={award.id}
                     className="bg-yellow-100 dark:bg-yellow-900 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-md flex items-center space-x-1"
                   >
                     <Trophy className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-yellow-600 dark:text-yellow-400" />
                     <span className="text-yellow-700 dark:text-yellow-300 text-xs">
-                      {award}
+                      {award.title}
                     </span>
                   </div>
                 ))}

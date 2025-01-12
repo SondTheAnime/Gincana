@@ -1,33 +1,16 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Users } from 'lucide-react';
-import { Team, Player } from './types';
+import { Team, Player, Award, SportType, CategoryType } from './types';
 import TeamsList from './TeamsList';
 import TeamDetails from './TeamDetails';
 import TeamModals from './TeamModals';
+import { supabase } from '../../../lib/supabase';
+import { toast } from 'react-toastify';
 
 const ManageTeams = () => {
-  const [teams, setTeams] = useState<Team[]>([
-    {
-      id: 1,
-      name: 'Informática',
-      category: 'Masculino',
-      modality: 'Futsal',
-      players: [
-        {
-          id: 1,
-          name: 'João Silva',
-          number: '10',
-          position: 'Atacante',
-          yellowCards: 1,
-          redCards: 0,
-          suspended: false,
-          photo: undefined
-        }
-      ],
-      awards: []
-    }
-  ]);
-
+  const [teams, setTeams] = useState<Team[]>([]);
+  const [players, setPlayers] = useState<Record<number, Player[]>>({});
+  const [awards, setAwards] = useState<Record<number, Award[]>>({});
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
   const [isAddingTeam, setIsAddingTeam] = useState(false);
   const [isAddingPlayer, setIsAddingPlayer] = useState(false);
@@ -35,23 +18,95 @@ const ManageTeams = () => {
   const [editingPlayer, setEditingPlayer] = useState<Player | null>(null);
   const [isEditingTeam, setIsEditingTeam] = useState(false);
   const [editingTeam, setEditingTeam] = useState<Team | null>(null);
-  const [newAward, setNewAward] = useState('');
-
-  const positions = ['Goleiro', 'Defensor', 'Meio-Campo', 'Atacante'];
-  const modalities = ['Futsal', 'Vôlei', 'Basquete', 'Handebol'];
+  const [loading, setLoading] = useState(true);
 
   const [newTeam, setNewTeam] = useState({
     name: '',
-    category: 'Masculino',
-    modality: 'Futsal'
+    category: 'Masculino' as CategoryType,
+    modality: 'Futebol' as SportType
   });
+
+  const [newAwardTitle, setNewAwardTitle] = useState('');
 
   const [newPlayer, setNewPlayer] = useState({
     name: '',
     number: '',
-    position: 'Goleiro',
     photo: undefined as string | undefined
   });
+
+  useEffect(() => {
+    fetchTeams();
+
+    // Inscrever para atualizações em tempo real
+    const subscription = supabase
+      .channel('teams_changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'teams' },
+        () => fetchTeams()
+      )
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  const fetchTeams = async () => {
+    try {
+      const { data: teamsData, error: teamsError } = await supabase
+        .from('teams')
+        .select('*')
+        .order('name');
+
+      if (teamsError) throw teamsError;
+
+      setTeams(teamsData);
+
+      // Buscar jogadores e premiações para cada time
+      for (const team of teamsData) {
+        fetchTeamPlayers(team.id);
+        fetchTeamAwards(team.id);
+      }
+    } catch (error) {
+      console.error('Erro ao buscar times:', error);
+      toast.error('Erro ao carregar times. Tente novamente.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchTeamPlayers = async (teamId: number) => {
+    try {
+      const { data, error } = await supabase
+        .from('players')
+        .select('*')
+        .eq('team_id', teamId)
+        .order('number');
+
+      if (error) throw error;
+
+      setPlayers(prev => ({ ...prev, [teamId]: data }));
+    } catch (error) {
+      console.error('Erro ao buscar jogadores:', error);
+    }
+  };
+
+  const fetchTeamAwards = async (teamId: number) => {
+    try {
+      const { data, error } = await supabase
+        .from('awards')
+        .select('*')
+        .eq('team_id', teamId)
+        .order('date', { ascending: false });
+
+      if (error) throw error;
+
+      setAwards(prev => ({ ...prev, [teamId]: data }));
+    } catch (error) {
+      console.error('Erro ao buscar premiações:', error);
+    }
+  };
 
   const handleAddTeam = () => {
     setIsAddingTeam(true);
@@ -61,53 +116,61 @@ const ManageTeams = () => {
     setIsAddingPlayer(true);
   };
 
-  const handleSubmitTeam = (e: React.FormEvent) => {
+  const handleSubmitTeam = async (e: React.FormEvent) => {
     e.preventDefault();
-    const newTeamData: Team = {
-      id: teams.length + 1,
-      name: newTeam.name,
-      category: newTeam.category,
-      modality: newTeam.modality,
-      players: [],
-      awards: []
-    };
-    setTeams([...teams, newTeamData]);
-    setNewTeam({ name: '', category: 'Masculino', modality: 'Futsal' });
-    setIsAddingTeam(false);
+    try {
+      const { data, error } = await supabase
+        .from('teams')
+        .insert([{
+          name: newTeam.name,
+          category: newTeam.category,
+          modality: newTeam.modality
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setTeams([...teams, data]);
+      setNewTeam({ name: '', category: 'Masculino', modality: 'Futebol' });
+      setIsAddingTeam(false);
+      toast.success('Time adicionado com sucesso!');
+    } catch (error) {
+      console.error('Erro ao adicionar time:', error);
+      toast.error('Erro ao adicionar time. Tente novamente.');
+    }
   };
 
-  const handleSubmitPlayer = (e: React.FormEvent) => {
+  const handleSubmitPlayer = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedTeam) return;
 
-    const newPlayerData: Player = {
-      id: selectedTeam.players.length + 1,
-      name: newPlayer.name,
-      number: newPlayer.number,
-      position: newPlayer.position,
-      yellowCards: 0,
-      redCards: 0,
-      suspended: false,
-      photo: newPlayer.photo
-    };
+    try {
+      const { data, error } = await supabase
+        .from('players')
+        .insert([{
+          name: newPlayer.name,
+          number: parseInt(newPlayer.number),
+          team_id: selectedTeam.id,
+          photo: newPlayer.photo
+        }])
+        .select()
+        .single();
 
-    const updatedTeams = teams.map(team => {
-      if (team.id === selectedTeam.id) {
-        return {
-          ...team,
-          players: [...team.players, newPlayerData]
-        };
-      }
-      return team;
-    });
+      if (error) throw error;
 
-    setTeams(updatedTeams);
-    setSelectedTeam({
-      ...selectedTeam,
-      players: [...selectedTeam.players, newPlayerData]
-    });
-    setNewPlayer({ name: '', number: '', position: 'Goleiro', photo: undefined });
-    setIsAddingPlayer(false);
+      setPlayers(prev => ({
+        ...prev,
+        [selectedTeam.id]: [...(prev[selectedTeam.id] || []), data]
+      }));
+      
+      setNewPlayer({ name: '', number: '', photo: undefined });
+      setIsAddingPlayer(false);
+      toast.success('Jogador adicionado com sucesso!');
+    } catch (error) {
+      console.error('Erro ao adicionar jogador:', error);
+      toast.error('Erro ao adicionar jogador. Tente novamente.');
+    }
   };
 
   const handleEditPlayer = (player: Player) => {
@@ -115,31 +178,30 @@ const ManageTeams = () => {
     setIsEditingPlayer(true);
   };
 
-  const handleUpdatePlayer = (e: React.FormEvent) => {
+  const handleUpdatePlayer = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingPlayer || !selectedTeam) return;
 
-    const updatedTeams = teams.map(team => {
-      if (team.id === selectedTeam.id) {
-        return {
-          ...team,
-          players: team.players.map(player => 
-            player.id === editingPlayer.id ? editingPlayer : player
-          )
-        };
-      }
-      return team;
-    });
+    try {
+      const { error } = await supabase
+        .from('players')
+        .update({
+          name: editingPlayer.name,
+          number: editingPlayer.number,
+          photo: editingPlayer.photo
+        })
+        .eq('id', editingPlayer.id);
 
-    setTeams(updatedTeams);
-    setSelectedTeam({
-      ...selectedTeam,
-      players: selectedTeam.players.map(player =>
-        player.id === editingPlayer.id ? editingPlayer : player
-      )
-    });
-    setIsEditingPlayer(false);
-    setEditingPlayer(null);
+      if (error) throw error;
+
+      await fetchTeamPlayers(selectedTeam.id);
+      setIsEditingPlayer(false);
+      setEditingPlayer(null);
+      toast.success('Jogador atualizado com sucesso!');
+    } catch (error) {
+      console.error('Erro ao atualizar jogador:', error);
+      toast.error('Erro ao atualizar jogador. Tente novamente.');
+    }
   };
 
   const handleEditTeam = (team: Team) => {
@@ -147,41 +209,82 @@ const ManageTeams = () => {
     setIsEditingTeam(true);
   };
 
-  const handleUpdateTeam = (e: React.FormEvent) => {
+  const handleUpdateTeam = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingTeam) return;
 
-    const updatedTeams = teams.map(team => 
-      team.id === editingTeam.id ? editingTeam : team
+    try {
+      const { error } = await supabase
+        .from('teams')
+        .update({
+          name: editingTeam.name,
+          category: editingTeam.category,
+          modality: editingTeam.modality
+        })
+        .eq('id', editingTeam.id);
+
+      if (error) throw error;
+
+      await fetchTeams();
+      setIsEditingTeam(false);
+      setEditingTeam(null);
+      toast.success('Time atualizado com sucesso!');
+    } catch (error) {
+      console.error('Erro ao atualizar time:', error);
+      toast.error('Erro ao atualizar time. Tente novamente.');
+    }
+  };
+
+  const handleAddAward = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingTeam) return;
+
+    try {
+      const { error } = await supabase
+        .from('awards')
+        .insert([{
+          team_id: editingTeam.id,
+          title: newAwardTitle,
+          date: new Date().toISOString()
+        }]);
+
+      if (error) throw error;
+
+      await fetchTeamAwards(editingTeam.id);
+      toast.success('Premiação adicionada com sucesso!');
+      setNewAwardTitle('');
+    } catch (error) {
+      console.error('Erro ao adicionar premiação:', error);
+      toast.error('Erro ao adicionar premiação. Tente novamente.');
+    }
+  };
+
+  const handleRemoveAward = async (awardId: number) => {
+    if (!editingTeam) return;
+
+    try {
+      const { error } = await supabase
+        .from('awards')
+        .delete()
+        .eq('id', awardId);
+
+      if (error) throw error;
+
+      await fetchTeamAwards(editingTeam.id);
+      toast.success('Premiação removida com sucesso!');
+    } catch (error) {
+      console.error('Erro ao remover premiação:', error);
+      toast.error('Erro ao remover premiação. Tente novamente.');
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center py-12">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500"></div>
+      </div>
     );
-
-    setTeams(updatedTeams);
-    setSelectedTeam(editingTeam);
-    setIsEditingTeam(false);
-    setEditingTeam(null);
-  };
-
-  const handleAddAward = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingTeam || !newAward.trim()) return;
-
-    const updatedTeam = {
-      ...editingTeam,
-      awards: [...editingTeam.awards, newAward.trim()]
-    };
-    setEditingTeam(updatedTeam);
-    setNewAward('');
-  };
-
-  const handleRemoveAward = (awardToRemove: string) => {
-    if (!editingTeam) return;
-
-    const updatedTeam = {
-      ...editingTeam,
-      awards: editingTeam.awards.filter(award => award !== awardToRemove)
-    };
-    setEditingTeam(updatedTeam);
-  };
+  }
 
   return (
     <div className="space-y-4 md:space-y-6">
@@ -202,10 +305,12 @@ const ManageTeams = () => {
           selectedTeam={selectedTeam}
           onSelectTeam={setSelectedTeam}
           onEditTeam={handleEditTeam}
+          awards={awards}
         />
         
         <TeamDetails
           selectedTeam={selectedTeam}
+          players={selectedTeam ? players[selectedTeam.id] || [] : []}
           onAddPlayer={handleAddPlayer}
           onEditPlayer={handleEditPlayer}
         />
@@ -220,9 +325,7 @@ const ManageTeams = () => {
         editingTeam={editingTeam}
         newTeam={newTeam}
         newPlayer={newPlayer}
-        positions={positions}
-        modalities={modalities}
-        newAward={newAward}
+        awards={editingTeam ? awards[editingTeam.id] || [] : []}
         onCloseAddTeam={() => setIsAddingTeam(false)}
         onCloseAddPlayer={() => setIsAddingPlayer(false)}
         onCloseEditPlayer={() => {
@@ -243,7 +346,6 @@ const ManageTeams = () => {
         onChangeEditingTeam={(field, value) => editingTeam && setEditingTeam({ ...editingTeam, [field]: value })}
         onAddAward={handleAddAward}
         onRemoveAward={handleRemoveAward}
-        onChangeNewAward={setNewAward}
       />
     </div>
   );

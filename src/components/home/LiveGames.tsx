@@ -1,60 +1,130 @@
-import { useState } from 'react';
-import { Activity, Filter, Clock, MapPin } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Activity, Filter } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
+import { toast } from 'react-toastify';
+
+interface Game {
+  id: number;
+  sport: string;
+  team_a: number;
+  team_b: number;
+  team_a_name?: string;
+  team_b_name?: string;
+  score_a: number;
+  score_b: number;
+  date: string;
+  time: string;
+  game_time: string;
+  period: string;
+  location: string;
+  category: string;
+  status: 'scheduled' | 'live' | 'finished' | 'cancelled';
+}
 
 const LiveGames = () => {
-  const [selectedSport, setSelectedSport] = useState<string>('all');
+  const [games, setGames] = useState<Game[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedSport, setSelectedSport] = useState('all');
+  const [sports, setSports] = useState<string[]>([]);
 
-  const liveGames = [
-    {
-      id: 1,
-      sport: 'Futsal',
-      teamA: 'Informática',
-      teamB: 'Automação',
-      scoreA: 2,
-      scoreB: 1,
-      time: '25:13',
-      period: '2º Tempo',
-      location: 'Quadra Principal',
-      category: 'Masculino',
-      highlights: [
-        'Gol - João (INF) - 15:20',
-        'Cartão Amarelo - Pedro (MEC) - 18:45',
-      ],
-    },
-    {
-      id: 2,
-      sport: 'Vôlei',
-      teamA: 'Controle',
-      teamB: 'Eletromecanica',
-      scoreA: 15,
-      scoreB: 12,
-      time: '-',
-      period: '2º Set',
-      location: 'Quadra Coberta',
-      category: 'Feminino',
-      highlights: ['Ponto - Ana (QUI) - Ace', 'Tempo técnico pedido por ELE'],
-    },
-    {
-      id: 3,
-      sport: 'Basquete',
-      teamA: 'Edificações',
-      teamB: 'Eletromecanica',
-      scoreA: 45,
-      scoreB: 42,
-      time: '05:22',
-      period: '3º Quarto',
-      location: 'Quadra Principal',
-      category: 'Misto',
-      highlights: ['Cesta de 3 - Maria (EDI)', 'Falta - Carlos (MIN)'],
-    },
-  ];
+  useEffect(() => {
+    const fetchSports = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('modalities')
+          .select('name')
+          .eq('is_team_sport', true)
+          .eq('is_active', true)
+          .order('name');
 
-  const sports = ['Futsal', 'Vôlei', 'Basquete'];
+        if (error) throw error;
+        setSports(data.map(sport => sport.name));
+      } catch (error) {
+        console.error('Erro ao buscar modalidades:', error);
+        toast.error('Erro ao carregar modalidades');
+      }
+    };
 
-  const filteredGames =
-    selectedSport === 'all'
-      ? liveGames
-      : liveGames.filter((game) => game.sport === selectedSport);
+    fetchSports();
+  }, []);
+
+  useEffect(() => {
+    const fetchGames = async () => {
+      try {
+        let query = supabase
+          .from('games')
+          .select(`
+            *,
+            team_a_name:teams!games_team_a_fkey(name),
+            team_b_name:teams!games_team_b_fkey(name)
+          `)
+          .eq('status', 'live')
+          .order('date')
+          .order('time');
+
+        if (selectedSport !== 'all') {
+          query = query.eq('sport', selectedSport);
+        }
+
+        const { data, error } = await query;
+
+        if (error) throw error;
+        setGames(data || []);
+      } catch (error) {
+        console.error('Erro ao buscar jogos:', error);
+        toast.error('Erro ao carregar jogos');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchGames();
+
+    // Inscrever para atualizações em tempo real
+    const subscription = supabase
+      .channel('live_games')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'games',
+          filter: `status=eq.live${selectedSport !== 'all' ? ` AND sport=eq.${selectedSport}` : ''}`
+        },
+        (payload) => {
+          if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+            setGames(current => {
+              const index = current.findIndex(game => game.id === payload.new.id);
+              if (index >= 0) {
+                return [
+                  ...current.slice(0, index),
+                  { ...current[index], ...payload.new },
+                  ...current.slice(index + 1)
+                ];
+              }
+              return [...current, payload.new];
+            });
+          } else if (payload.eventType === 'DELETE') {
+            setGames(current => current.filter(game => game.id !== payload.old.id));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [selectedSport]);
+
+  if (loading) {
+    return (
+      <div className="container mx-auto px-3 lg:px-6 py-4 md:py-8 lg:py-12">
+        <div className="flex justify-center items-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-500"></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-3 lg:px-6 py-4 md:py-8 lg:py-12">
@@ -84,87 +154,48 @@ const LiveGames = () => {
         </div>
       </div>
 
-      <div className="grid gap-3 md:gap-4 lg:gap-6 md:grid-cols-2">
-        {filteredGames.map((game) => (
-          <div
-            key={game.id}
-            className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden border-l-4 border-red-500"
-          >
-            <div className="p-3 md:p-4 lg:p-6">
-              <div className="flex flex-col space-y-3 md:space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2 md:space-x-3">
-                    <span className="text-sm md:text-base font-semibold text-gray-900 dark:text-white">
-                      {game.sport}
-                    </span>
-                    <span className="text-xs md:text-sm text-gray-500 dark:text-gray-400">•</span>
-                    <span className="text-xs md:text-sm text-gray-500 dark:text-gray-400">{game.category}</span>
-                  </div>
-                  <div className="flex items-center space-x-1 md:space-x-2">
-                    <span className="animate-pulse text-red-500">●</span>
-                    <span className="text-xs md:text-sm font-medium text-red-500">AO VIVO</span>
-                  </div>
+      {games.length === 0 ? (
+        <div className="text-center py-12">
+          <p className="text-gray-500 dark:text-gray-400">Nenhum jogo ao vivo no momento.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {games.map((game) => (
+            <div
+              key={game.id}
+              className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden"
+            >
+              <div className="p-4">
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-sm text-gray-500 dark:text-gray-400">
+                    {game.game_time} - {game.period}
+                  </span>
+                  <span className="text-xs font-medium text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30 px-2 py-1 rounded">
+                    {game.sport}
+                  </span>
                 </div>
-
-                <div className="flex items-center justify-between">
-                  <div className="text-center flex-1">
-                    <p className="text-sm md:text-base font-bold text-gray-900 dark:text-white mb-1 truncate max-w-[120px] md:max-w-[160px] mx-auto">
-                      {game.teamA}
-                    </p>
-                    <p className="text-2xl md:text-3xl lg:text-4xl font-bold text-red-600">
-                      {game.scoreA}
-                    </p>
-                  </div>
-                  <div className="text-center px-2 md:px-4">
-                    <p className="text-xs md:text-sm font-medium text-gray-500 dark:text-gray-300">
-                      {game.period}
-                    </p>
-                    <div className="flex items-center justify-center space-x-1 mt-1">
-                      <Clock className="h-3 w-3 md:h-4 md:w-4 text-gray-400 dark:text-gray-300" />
-                      <p className="text-xs md:text-sm text-gray-500 dark:text-gray-300">{game.time}</p>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <p className="font-medium dark:text-white">{game.team_a_name}</p>
+                    </div>
+                    <div className="px-4">
+                      <span className="text-2xl font-bold text-gray-900 dark:text-white">
+                        {game.score_a} - {game.score_b}
+                      </span>
+                    </div>
+                    <div className="flex-1 text-right">
+                      <p className="font-medium dark:text-white">{game.team_b_name}</p>
                     </div>
                   </div>
-                  <div className="text-center flex-1">
-                    <p className="text-sm md:text-base font-bold text-gray-900 dark:text-white mb-1 truncate max-w-[120px] md:max-w-[160px] mx-auto">
-                      {game.teamB}
-                    </p>
-                    <p className="text-2xl md:text-3xl lg:text-4xl font-bold text-red-600">
-                      {game.scoreB}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="border-t border-gray-100 dark:border-gray-700 pt-2 md:pt-4">
-                  <div className="flex items-center space-x-1 md:space-x-2 text-xs md:text-sm text-gray-500 dark:text-gray-300 mb-2">
-                    <MapPin className="h-3 w-3 md:h-4 md:w-4" />
+                  <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
+                    <span>{game.category}</span>
                     <span>{game.location}</span>
-                  </div>
-                  <div className="space-y-1 md:space-y-2">
-                    <p className="text-xs md:text-sm font-medium text-gray-700 dark:text-gray-200">
-                      Últimos Lances:
-                    </p>
-                    {game.highlights.map((highlight, index) => (
-                      <p
-                        key={index}
-                        className="text-xs md:text-sm text-gray-600 dark:text-gray-300 pl-2 md:pl-3 border-l border-red-200 dark:border-red-400"
-                      >
-                        {highlight}
-                      </p>
-                    ))}
                   </div>
                 </div>
               </div>
             </div>
-          </div>
-        ))}
-      </div>
-
-      {filteredGames.length === 0 && (
-        <div className="text-center py-6 md:py-8 lg:py-12 bg-white dark:bg-gray-800 rounded-lg shadow-md">
-          <Activity className="h-8 w-8 md:h-10 md:w-10 lg:h-12 lg:w-12 text-gray-400 dark:text-gray-300 mx-auto mb-2 md:mb-4" />
-          <p className="text-sm md:text-base lg:text-lg text-gray-500 dark:text-gray-300">
-            Nenhum jogo ao vivo no momento
-          </p>
+          ))}
         </div>
       )}
     </div>

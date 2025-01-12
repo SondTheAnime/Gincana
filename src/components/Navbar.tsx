@@ -1,12 +1,36 @@
 import { Trophy, LogIn, Moon, Sun, Menu, X } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
 
 const Navbar = () => {
   const navigate = useNavigate();
   const { isDarkMode, toggleTheme } = useTheme();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        setIsAuthenticated(!!session);
+      } catch (error) {
+        console.error('Erro ao verificar autenticação:', error);
+        setIsAuthenticated(false);
+      }
+    };
+
+    checkAuth();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsAuthenticated(!!session);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
@@ -14,6 +38,14 @@ const Navbar = () => {
 
   const closeMenu = () => {
     setIsMenuOpen(false);
+  };
+
+  const handleAdminClick = () => {
+    if (isAuthenticated) {
+      navigate('/admin/dashboard');
+    } else {
+      navigate('/admin');
+    }
   };
 
   return (
@@ -41,11 +73,11 @@ const Navbar = () => {
                 {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
               </button>
               <button 
-                onClick={() => navigate('/admin')}
+                onClick={handleAdminClick}
                 className="flex items-center space-x-2 bg-green-600 hover:bg-green-500 dark:bg-gray-700 dark:hover:bg-gray-600 px-4 py-2 rounded-md transition-colors text-sm lg:text-base"
               >
                 <LogIn className="h-4 w-4 lg:h-5 lg:w-5" />
-                <span>Admin</span>
+                <span>{isAuthenticated ? 'Dashboard' : 'Admin'}</span>
               </button>
             </div>
           </div>
@@ -97,17 +129,21 @@ const Navbar = () => {
             </Link>
             <button 
               onClick={() => {
-                navigate('/admin');
+                handleAdminClick();
                 closeMenu();
               }}
               className="flex items-center space-x-2 bg-green-600 hover:bg-green-500 dark:bg-gray-700 dark:hover:bg-gray-600 px-4 py-2 rounded-md transition-colors text-sm w-full"
             >
               <LogIn className="h-4 w-4" />
-              <span>Admin</span>
+              <span>{isAuthenticated ? 'Dashboard' : 'Admin'}</span>
             </button>
           </div>
         </div>
       )}
+      {/* Copyright */}
+      <div className="text-center py-2 text-xs bg-green-800 dark:bg-gray-900">
+        <p>© {new Date().getFullYear()} João Victor. Todos os direitos reservados.</p>
+      </div>
     </nav>
   );
 }

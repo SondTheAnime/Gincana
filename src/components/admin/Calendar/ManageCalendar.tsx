@@ -1,46 +1,107 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Calendar as CalendarIcon, MapPin, Trash2, Edit } from 'lucide-react';
-
-interface Match {
-  id: number;
-  date: string;
-  time: string;
-  sport: string;
-  teamA: string;
-  teamB: string;
-  location: string;
-  category: string;
-}
+import { supabase } from '../../../lib/supabase';
+import { toast } from 'react-toastify';
+import { Match } from './types';
 
 const ManageCalendar = () => {
-  const [matches, setMatches] = useState<Match[]>([
-    {
-      id: 1,
-      date: '2024-03-20',
-      time: '14:00',
-      sport: 'Futsal',
-      teamA: 'Edificações',
-      teamB: 'Mineração',
-      location: 'Quadra Principal',
-      category: 'Masculino'
-    },
-    {
-      id: 2,
-      date: '2024-03-20',
-      time: '15:30',
-      sport: 'Basquete',
-      teamA: 'Informática',
-      teamB: 'Química',
-      location: 'Quadra Coberta',
-      category: 'Misto'
-    },
-  ]);
-
+  const [matches, setMatches] = useState<Match[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState<string>('2024-03');
 
-  const handleDeleteMatch = (id: number) => {
-    if (window.confirm('Tem certeza que deseja excluir este jogo?')) {
-      setMatches(matches.filter(match => match.id !== id));
+  useEffect(() => {
+    const fetchMatches = async () => {
+      try {
+        const startDate = new Date(selectedMonth + '-01');
+        const endDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0);
+
+        // Buscar jogos e times relacionados
+        const { data, error } = await supabase
+          .from('games')
+          .select(`
+            id,
+            date,
+            time,
+            sport,
+            team_a,
+            team_b,
+            location,
+            category,
+            status,
+            team_a_name:teams!games_team_a_fkey(name),
+            team_b_name:teams!games_team_b_fkey(name)
+          `)
+          .eq('status', 'scheduled')
+          .gte('date', startDate.toISOString())
+          .lte('date', endDate.toISOString())
+          .order('date', { ascending: true })
+          .order('time', { ascending: true });
+
+        if (error) throw error;
+
+        // Formatar os dados com os nomes dos times
+        const formattedGames = (data || []).map(game => ({
+          id: game.id,
+          date: game.date,
+          time: game.time,
+          sport: game.sport,
+          team_a: game.team_a,
+          team_b: game.team_b,
+          location: game.location,
+          category: game.category,
+          status: game.status,
+          team_a_name: game.team_a_name?.[0]?.name,
+          team_b_name: game.team_b_name?.[0]?.name
+        }));
+
+        setMatches(formattedGames);
+      } catch (error) {
+        console.error('Erro ao buscar jogos:', error);
+        toast.error('Erro ao carregar jogos. Tente novamente.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    // Inscrever para atualizações em tempo real
+    const subscription = supabase
+      .channel('scheduled_games')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'games',
+          filter: 'status=eq.scheduled'
+        },
+        async (payload) => {
+          // Recarregar os dados quando houver mudanças
+          await fetchMatches();
+        }
+      )
+      .subscribe();
+
+    fetchMatches();
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [selectedMonth]);
+
+  const handleDeleteMatch = async (id: number) => {
+    if (!window.confirm('Tem certeza que deseja excluir este jogo?')) return;
+
+    try {
+      const { error } = await supabase
+        .from('games')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      toast.success('Jogo excluído com sucesso!');
+    } catch (error) {
+      console.error('Erro ao excluir jogo:', error);
+      toast.error('Erro ao excluir jogo. Tente novamente.');
     }
   };
 
@@ -49,7 +110,7 @@ const ManageCalendar = () => {
     console.log('Editar jogo:', id);
   };
 
-  const filteredMatches = matches.filter(match => match.date.startsWith(selectedMonth));
+  const filteredMatches = matches;
 
   const groupedMatches = filteredMatches.reduce((groups, match) => {
     const date = match.date;
@@ -59,6 +120,14 @@ const ManageCalendar = () => {
     groups[date].push(match);
     return groups;
   }, {} as Record<string, Match[]>);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center py-12">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4 md:space-y-6">
@@ -113,13 +182,13 @@ const ManageCalendar = () => {
                             <div className="flex items-center space-x-2 md:space-x-4">
                               <div className="text-right flex-1">
                                 <p className="text-sm md:text-base font-semibold text-gray-900 dark:text-white truncate max-w-[120px] md:max-w-[160px]">
-                                  {match.teamA}
+                                  {match.team_a_name}
                                 </p>
                               </div>
                               <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 font-medium px-2">VS</p>
                               <div className="text-left flex-1">
                                 <p className="text-sm md:text-base font-semibold text-gray-900 dark:text-white truncate max-w-[120px] md:max-w-[160px]">
-                                  {match.teamB}
+                                  {match.team_b_name}
                                 </p>
                               </div>
                             </div>
