@@ -36,7 +36,7 @@ const AddGame = ({ isOpen, onClose }: AddGameProps) => {
   const [sports, setSports] = useState<string[]>([]);
 
   const categories = ['Masculino', 'Feminino', 'Misto'];
-  const locations = ['Quadra Principal', 'Quadra Coberta'];
+  const locations = ['Quadra Principal', 'Quadra Coberta', 'Campo', 'Piscina', 'Ginásio'];
 
   useEffect(() => {
     const fetchTeams = async () => {
@@ -56,24 +56,32 @@ const AddGame = ({ isOpen, onClose }: AddGameProps) => {
 
     const fetchSports = async () => {
       try {
+        console.log('Buscando modalidades...');
         const { data, error } = await supabase
           .from('modalities')
-          .select('name')
+          .select('*')
           .eq('is_team_sport', true)
           .eq('is_active', true)
           .order('name');
 
-        if (error) throw error;
-        setSports(data.map(sport => sport.name));
+        if (error) {
+          console.error('Erro na query:', error);
+          throw error;
+        }
+        
+        console.log('Modalidades encontradas:', data);
+        setSports(data?.map(sport => sport.name) || []);
       } catch (error) {
         console.error('Erro ao buscar modalidades:', error);
         toast.error('Erro ao carregar modalidades. Tente novamente.');
       }
     };
 
-    fetchTeams();
-    fetchSports();
-  }, []);
+    if (isOpen) {
+      fetchTeams();
+      fetchSports();
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     // Filtrar times baseado na modalidade e categoria selecionadas

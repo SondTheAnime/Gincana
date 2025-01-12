@@ -20,7 +20,10 @@ interface Match {
 const UpcomingMatches = () => {
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedMonth, setSelectedMonth] = useState('2024-03');
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  });
   const [selectedSport, setSelectedSport] = useState('all');
   const [sports, setSports] = useState<string[]>([]);
 
@@ -42,24 +45,64 @@ const UpcomingMatches = () => {
       }
     };
 
+    const findNextMonthWithGames = async () => {
+      try {
+        // Buscar o próximo jogo agendado
+        const { data, error } = await supabase
+          .from('games')
+          .select('date')
+          .eq('status', 'scheduled')
+          .gte('date', new Date().toISOString().split('T')[0])
+          .order('date')
+          .limit(1);
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          const nextGameDate = new Date(data[0].date);
+          const nextMonth = `${nextGameDate.getFullYear()}-${String(nextGameDate.getMonth() + 1).padStart(2, '0')}`;
+          setSelectedMonth(nextMonth);
+        }
+      } catch (error) {
+        console.error('Erro ao buscar próximo mês com jogos:', error);
+      }
+    };
+
     fetchSports();
+    findNextMonthWithGames();
   }, []);
 
   useEffect(() => {
     const fetchMatches = async () => {
       try {
-        const startDate = `${selectedMonth}-01`;
-        const endDate = `${selectedMonth}-31`;
+        const [year, month] = selectedMonth.split('-');
+        const startDate = new Date(Number(year), Number(month) - 1, 1);
+        const endDate = new Date(Number(year), Number(month), 0);
 
         let query = supabase
           .from('games')
           .select(`
-            *,
-            team_a_name:teams!games_team_a_fkey(name),
-            team_b_name:teams!games_team_b_fkey(name)
+            id,
+            sport,
+            category,
+            team_a,
+            team_b,
+            score_a,
+            score_b,
+            date,
+            time,
+            game_time,
+            period,
+            location,
+            status,
+            created_at,
+            updated_at,
+            highlights,
+            team_a_name,
+            team_b_name
           `)
-          .gte('date', startDate)
-          .lte('date', endDate)
+          .gte('date', startDate.toISOString().split('T')[0])
+          .lte('date', endDate.toISOString().split('T')[0])
           .eq('status', 'scheduled')
           .order('date')
           .order('time');
@@ -68,13 +111,33 @@ const UpcomingMatches = () => {
           query = query.eq('sport', selectedSport);
         }
 
-        const { data, error } = await query;
+        const { data: gamesData, error } = await query;
 
         if (error) throw error;
-        setMatches(data || []);
+
+        // Transformar os dados para incluir os nomes dos times no formato esperado
+        const formattedData = gamesData?.map(game => {
+          return {
+            id: game.id,
+            date: game.date,
+            time: game.time,
+            sport: game.sport,
+            category: game.category,
+            location: game.location,
+            status: game.status,
+            team_a: game.team_a,
+            team_b: game.team_b,
+            team_a_name: game.team_a_name || 'Time não encontrado',
+            team_b_name: game.team_b_name || 'Time não encontrado',
+            team_a_score: game.score_a || 0,
+            team_b_score: game.score_b || 0
+          };
+        }) || [];
+
+        setMatches(formattedData);
       } catch (error) {
         console.error('Erro ao buscar jogos:', error);
-        toast.error('Erro ao carregar jogos');
+        toast.error('Erro ao carregar jogos. Tente novamente.');
       } finally {
         setLoading(false);
       }
@@ -104,9 +167,19 @@ const UpcomingMatches = () => {
               onChange={(e) => setSelectedMonth(e.target.value)}
               className="w-full appearance-none bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md py-2 pl-3 pr-8 text-sm md:text-base focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent dark:text-white"
             >
-              <option value="2024-03">Março 2024</option>
-              <option value="2024-04">Abril 2024</option>
-              <option value="2024-05">Maio 2024</option>
+
+              <option value="2025-01">Janeiro 2025</option>
+              <option value="2025-02">Fevereiro 2025</option>
+              <option value="2025-03">Março 2025</option>
+              <option value="2025-04">Abril 2025</option>
+              <option value="2025-05">Maio 2025</option>
+              <option value="2025-06">Junho 2025</option>
+              <option value="2025-07">Julho 2025</option>
+              <option value="2025-08">Agosto 2025</option>
+              <option value="2025-09">Setembro 2025</option>
+              <option value="2025-10">Outubro 2025</option>
+              <option value="2025-11">Novembro 2025</option>
+              <option value="2025-12">Dezembro 2025</option>
             </select>
             <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
           </div>
@@ -140,7 +213,11 @@ const UpcomingMatches = () => {
               <div className="p-4">
                 <div className="flex items-center justify-between mb-4">
                   <span className="text-sm text-gray-500 dark:text-gray-400">
-                    {new Date(match.date).toLocaleDateString('pt-BR')} às {match.time}
+                    {new Date(`${match.date}T12:00:00`).toLocaleDateString('pt-BR', {
+                      weekday: 'long',
+                      day: 'numeric',
+                      month: 'long'
+                    })} às {match.time}
                   </span>
                   <span className="text-xs font-medium text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/30 px-2 py-1 rounded">
                     {match.sport}
