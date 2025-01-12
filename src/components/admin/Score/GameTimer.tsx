@@ -14,7 +14,7 @@ const GameTimer = ({ initialTime = '00:00', onTimeUpdate }: GameTimerProps) => {
   const [isRunning, setIsRunning] = useState(false)
 
   useEffect(() => {
-    let interval: number
+    let interval: NodeJS.Timeout
 
     if (isRunning) {
       interval = setInterval(() => {

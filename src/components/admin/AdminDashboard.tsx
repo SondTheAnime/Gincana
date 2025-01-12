@@ -1,13 +1,25 @@
-import { Plus, Calendar, Trophy, Users } from 'lucide-react';
+import { Plus, Calendar, Trophy, Users, LogOut } from 'lucide-react';
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { supabase } from '../../lib/supabase';
 import AddGame from './Games/AddGame';
 import ManageCalendar from './Calendar/ManageCalendar';
 import ManageScore from './Score/ManageScore';
 import ManageTeams from './Teams/ManageTeams';
 
 const AdminDashboard = () => {
+  const navigate = useNavigate();
   const [activeComponent, setActiveComponent] = useState<'calendar' | 'score' | 'teams' | null>(null);
   const [isAddGameModalOpen, setIsAddGameModalOpen] = useState(false);
+
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      navigate('/admin');
+    } catch (error) {
+      console.error('Erro ao fazer logout:', error);
+    }
+  };
 
   const renderContent = () => {
     switch (activeComponent) {
@@ -61,9 +73,18 @@ const AdminDashboard = () => {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
         <div className="py-4 sm:py-6">
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-6 md:mb-8">
-            Painel Administrativo
-          </h1>
+          <div className="flex justify-between items-center mb-6 md:mb-8">
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
+              Painel Administrativo
+            </h1>
+            <button
+              onClick={handleLogout}
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 dark:focus:ring-offset-gray-800"
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              Sair
+            </button>
+          </div>
           
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
             {cards.map((card) => (

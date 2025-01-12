@@ -5,6 +5,7 @@ import AdminDashboard from '../components/admin/AdminDashboard';
 import LiveGames from '../components/home/LiveGames';
 import UpcomingMatches from '../components/home/UpcomingMatches';
 import Home from '../pages/Home';
+import PrivateRoute from '../components/admin/PrivateRoute';
 
 export const router = createBrowserRouter([
   {
@@ -32,7 +33,11 @@ export const router = createBrowserRouter([
           },
           {
             path: 'dashboard',
-            element: <AdminDashboard />,
+            element: (
+              <PrivateRoute>
+                <AdminDashboard />
+              </PrivateRoute>
+            ),
           },
         ],
       },
