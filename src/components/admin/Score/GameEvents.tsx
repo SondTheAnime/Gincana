@@ -1,97 +1,97 @@
 import { useState } from 'react'
 import { Game, GameEvent, Player, EventType } from './types'
-import { Plus } from 'lucide-react'
 
 interface GameEventsProps {
   game: Game
   players: Player[]
-  onAddEvent: (event: Omit<GameEvent, 'id' | 'created_at' | 'updated_at'>) => void
+  onAddEvent: (event: Omit<GameEvent, 'created_at'>) => void
 }
 
-const EVENT_TYPES: { value: EventType; label: string }[] = [
+const EVENT_TYPES = [
   { value: 'goal', label: 'Gol' },
-  { value: 'assist', label: 'Assistência' },
-  { value: 'yellowCard', label: 'Cartão Amarelo' },
-  { value: 'redCard', label: 'Cartão Vermelho' }
+  { value: 'yellow_card', label: 'Cartão Amarelo' },
+  { value: 'red_card', label: 'Cartão Vermelho' },
+  { value: 'substitution', label: 'Substituição' }
 ]
 
 const GameEvents = ({ game, players, onAddEvent }: GameEventsProps) => {
-  const [selectedTeam, setSelectedTeam] = useState<'A' | 'B'>('A')
-  const [selectedType, setSelectedType] = useState<EventType>('goal')
-  const [selectedPlayer, setSelectedPlayer] = useState<string>('')
+  const [newEvent, setNewEvent] = useState({
+    type: 'goal' as EventType,
+    team: 'A' as 'A' | 'B',
+    player_id: ''
+  })
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    
-    if (!selectedPlayer) return
+    if (!newEvent.player_id) return
 
     onAddEvent({
-      game_id: game.id,
-      player_id: parseInt(selectedPlayer),
-      team: selectedTeam,
-      type: selectedType
+      type: newEvent.type,
+      team: newEvent.team,
+      player_id: parseInt(newEvent.player_id)
     })
 
-    // Resetar seleções
-    setSelectedPlayer('')
+    setNewEvent({
+      ...newEvent,
+      player_id: ''
+    })
   }
-
-  const teamPlayers = players.filter(player => 
-    selectedTeam === 'A' ? player.team_id === game.team_a : player.team_id === game.team_b
-  )
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Eventos do Jogo</h3>
-        <form onSubmit={handleSubmit} className="flex gap-2">
+      <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 sm:p-4">
+        <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3">
           <select
-            value={selectedTeam}
-            onChange={(e) => setSelectedTeam(e.target.value as 'A' | 'B')}
-            className="rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white py-1.5 px-2 text-sm"
+            value={newEvent.type}
+            onChange={(e) => setNewEvent({ ...newEvent, type: e.target.value as EventType })}
+            className="flex-1 rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white py-1.5 sm:py-2 px-2 sm:px-3 text-sm"
+          >
+            {EVENT_TYPES.map(type => (
+              <option key={type.value} value={type.value}>{type.label}</option>
+            ))}
+          </select>
+
+          <select
+            value={newEvent.team}
+            onChange={(e) => setNewEvent({ ...newEvent, team: e.target.value as 'A' | 'B' })}
+            className="flex-1 rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white py-1.5 sm:py-2 px-2 sm:px-3 text-sm"
           >
             <option value="A">{game.team_a_name}</option>
             <option value="B">{game.team_b_name}</option>
           </select>
 
           <select
-            value={selectedType}
-            onChange={(e) => setSelectedType(e.target.value as EventType)}
-            className="rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white py-1.5 px-2 text-sm"
+            value={newEvent.player_id}
+            onChange={(e) => setNewEvent({ ...newEvent, player_id: e.target.value })}
+            className="flex-1 rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white py-1.5 sm:py-2 px-2 sm:px-3 text-sm"
+            required
           >
-            {EVENT_TYPES.map(type => (
-              <option key={type.value} value={type.value}>
-                {type.label}
-              </option>
-            ))}
-          </select>
-
-          <select
-            value={selectedPlayer}
-            onChange={(e) => setSelectedPlayer(e.target.value)}
-            className="rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white py-1.5 px-2 text-sm"
-          >
-            <option value="">Selecione um jogador</option>
-            {teamPlayers.map(player => (
-              <option key={player.id} value={player.id}>
-                {player.number} - {player.name}
-              </option>
-            ))}
+            <option value="">Selecione o jogador</option>
+            {players
+              .filter(player => 
+                (newEvent.team === 'A' && player.team_id === game.team_a) ||
+                (newEvent.team === 'B' && player.team_id === game.team_b)
+              )
+              .map(player => (
+                <option key={player.id} value={player.id}>
+                  {player.name} ({player.number})
+                </option>
+              ))
+            }
           </select>
 
           <button
             type="submit"
-            disabled={!selectedPlayer}
-            className="inline-flex items-center gap-1 rounded-md bg-blue-600 px-2.5 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={!newEvent.player_id}
+            className="bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 text-white px-4 py-2 rounded-md text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Plus className="h-4 w-4" />
             Adicionar
           </button>
         </form>
       </div>
 
       <div className="space-y-2">
-        {game.highlights?.map((event, index) => {
+        {(game.highlights || []).map((event, index) => {
           const player = players.find(p => p.id === event.player_id)
           const eventType = EVENT_TYPES.find(t => t.value === event.type)
           

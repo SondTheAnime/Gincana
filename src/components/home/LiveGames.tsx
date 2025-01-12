@@ -3,13 +3,20 @@ import { Activity, Filter } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { toast } from 'react-toastify';
 
+interface GameEvent {
+  created_at: string;
+  player_id: number;
+  team: 'A' | 'B';
+  type: 'goal' | 'yellow_card' | 'red_card' | 'substitution';
+}
+
 interface Game {
   id: number;
   sport: string;
   team_a: number;
   team_b: number;
-  team_a_name?: string;
-  team_b_name?: string;
+  team_a_name: string;
+  team_b_name: string;
   score_a: number;
   score_b: number;
   date: string;
@@ -19,6 +26,7 @@ interface Game {
   location: string;
   category: string;
   status: 'scheduled' | 'live' | 'finished' | 'cancelled';
+  highlights?: GameEvent[];
 }
 
 const LiveGames = () => {
@@ -26,26 +34,30 @@ const LiveGames = () => {
   const [loading, setLoading] = useState(true);
   const [selectedSport, setSelectedSport] = useState('all');
   const [sports, setSports] = useState<string[]>([]);
+  const [players, setPlayers] = useState<Record<number, string>>({});
 
   useEffect(() => {
-    const fetchSports = async () => {
+    const fetchPlayers = async () => {
       try {
         const { data, error } = await supabase
-          .from('modalities')
-          .select('name')
-          .eq('is_team_sport', true)
-          .eq('is_active', true)
-          .order('name');
+          .from('players')
+          .select('id, name');
 
         if (error) throw error;
-        setSports(data.map(sport => sport.name));
+
+        const playersMap = (data || []).reduce((acc, player) => {
+          acc[player.id] = player.name;
+          return acc;
+        }, {} as Record<number, string>);
+
+        setPlayers(playersMap);
       } catch (error) {
-        console.error('Erro ao buscar modalidades:', error);
-        toast.error('Erro ao carregar modalidades');
+        console.error('Erro ao buscar jogadores:', error);
+        toast.error('Erro ao carregar jogadores');
       }
     };
 
-    fetchSports();
+    fetchPlayers();
   }, []);
 
   useEffect(() => {
@@ -54,9 +66,22 @@ const LiveGames = () => {
         let query = supabase
           .from('games')
           .select(`
-            *,
-            team_a_name:teams!games_team_a_fkey(name),
-            team_b_name:teams!games_team_b_fkey(name)
+            id,
+            sport,
+            category,
+            team_a,
+            team_b,
+            score_a,
+            score_b,
+            date,
+            time,
+            game_time,
+            period,
+            location,
+            status,
+            team_a_name,
+            team_b_name,
+            highlights
           `)
           .eq('status', 'live')
           .order('date')
@@ -69,7 +94,21 @@ const LiveGames = () => {
         const { data, error } = await query;
 
         if (error) throw error;
-        setGames(data || []);
+
+        // Parse dos highlights
+        const gamesWithParsedHighlights = (data || []).map(game => ({
+          ...game,
+          highlights: (game.highlights || []).map((highlight: string | GameEvent) => {
+            try {
+              return typeof highlight === 'string' ? JSON.parse(highlight) : highlight;
+            } catch (e) {
+              console.error('Erro ao fazer parse do highlight:', e);
+              return null;
+            }
+          }).filter(Boolean)
+        }));
+
+        setGames(gamesWithParsedHighlights);
       } catch (error) {
         console.error('Erro ao buscar jogos:', error);
         toast.error('Erro ao carregar jogos');
@@ -91,18 +130,34 @@ const LiveGames = () => {
           table: 'games',
           filter: `status=eq.live${selectedSport !== 'all' ? ` AND sport=eq.${selectedSport}` : ''}`
         },
-        (payload) => {
+        (payload: any) => {
           if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
             setGames(current => {
               const index = current.findIndex(game => game.id === payload.new.id);
+              const highlights = (payload.new.highlights || []).map((highlight: string | GameEvent) => {
+                try {
+                  return typeof highlight === 'string' ? JSON.parse(highlight) : highlight;
+                } catch (e) {
+                  console.error('Erro ao fazer parse do highlight:', e);
+                  return null;
+                }
+              }).filter(Boolean);
+
+              const newGame = {
+                ...payload.new,
+                team_a_name: payload.new.team_a_name || 'Time não encontrado',
+                team_b_name: payload.new.team_b_name || 'Time não encontrado',
+                highlights
+              };
+              
               if (index >= 0) {
                 return [
                   ...current.slice(0, index),
-                  { ...current[index], ...payload.new },
+                  newGame,
                   ...current.slice(index + 1)
                 ];
               }
-              return [...current, payload.new];
+              return [...current, newGame];
             });
           } else if (payload.eventType === 'DELETE') {
             setGames(current => current.filter(game => game.id !== payload.old.id));
@@ -115,6 +170,27 @@ const LiveGames = () => {
       subscription.unsubscribe();
     };
   }, [selectedSport]);
+
+  useEffect(() => {
+    const fetchSports = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('modalities')
+          .select('name')
+          .eq('is_team_sport', true)
+          .eq('is_active', true)
+          .order('name');
+
+        if (error) throw error;
+        setSports(data.map(sport => sport.name));
+      } catch (error) {
+        console.error('Erro ao buscar modalidades:', error);
+        toast.error('Erro ao carregar modalidades');
+      }
+    };
+
+    fetchSports();
+  }, []);
 
   if (loading) {
     return (
@@ -192,6 +268,24 @@ const LiveGames = () => {
                     <span>{game.category}</span>
                     <span>{game.location}</span>
                   </div>
+                  {(game.highlights?.length ?? 0) > 0 && (
+                    <div className="mt-2 space-y-1 border-t border-gray-200 dark:border-gray-700 pt-2">
+                      {game.highlights?.map((event: GameEvent, index: number) => (
+                        <div key={index} className="text-sm text-gray-600 dark:text-gray-400 flex items-center space-x-2">
+                          <span>{new Date(event.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+                          <span>-</span>
+                          <span>
+                            {event.type === 'goal' && `⚽ Gol - ${players[event.player_id] || 'Jogador não encontrado'}`}
+                            {event.type === 'yellow_card' && `🟨 Cartão Amarelo - ${players[event.player_id] || 'Jogador não encontrado'}`}
+                            {event.type === 'red_card' && `🟥 Cartão Vermelho - ${players[event.player_id] || 'Jogador não encontrado'}`}
+                            {event.type === 'substitution' && `🔄 Substituição - ${players[event.player_id] || 'Jogador não encontrado'}`}
+                          </span>
+                          <span>-</span>
+                          <span>{event.team === 'A' ? game.team_a_name : game.team_b_name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

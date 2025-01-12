@@ -1,8 +1,18 @@
+export type GameStatus = 'scheduled' | 'live' | 'finished' | 'cancelled';
+export type EventType = 'goal' | 'yellow_card' | 'red_card' | 'substitution';
+
 export interface Team {
   id: number;
   name: string;
   modality: string;
   category: string;
+}
+
+export interface GameEvent {
+  created_at: string;
+  player_id: number;
+  team: 'A' | 'B';
+  type: EventType;
 }
 
 export interface Match {
@@ -16,5 +26,10 @@ export interface Match {
   team_b_name?: string;
   location: string;
   category: string;
-  status: 'scheduled' | 'live' | 'finished' | 'cancelled';
+  status: GameStatus;
+  score_a?: number;
+  score_b?: number;
+  game_time?: string;
+  period?: string;
+  highlights?: GameEvent[];
 } 

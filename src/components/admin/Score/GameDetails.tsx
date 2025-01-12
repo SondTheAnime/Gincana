@@ -14,7 +14,6 @@ interface GameDetailsProps {
 }
 
 const GameDetails = ({ game, onClose, onUpdateGame }: GameDetailsProps) => {
-  const [events, setEvents] = useState<GameEvent[]>([])
   const [players, setPlayers] = useState<Player[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -30,17 +29,7 @@ const GameDetails = ({ game, onClose, onUpdateGame }: GameDetailsProps) => {
 
         if (playersError) throw playersError
 
-        // Buscar eventos do jogo
-        const { data: eventsData, error: eventsError } = await supabase
-          .from('game_events')
-          .select('*')
-          .eq('game_id', game.id)
-          .order('created_at', { ascending: false })
-
-        if (eventsError) throw eventsError
-
         setPlayers(playersData || [])
-        setEvents(eventsData || [])
       } catch (error) {
         console.error('Erro ao carregar dados:', error)
         toast.error('Erro ao carregar dados do jogo. Tente novamente.')
@@ -49,40 +38,7 @@ const GameDetails = ({ game, onClose, onUpdateGame }: GameDetailsProps) => {
       }
     }
 
-    // Inscrever para atualizações em tempo real dos eventos
-    const subscription = supabase
-      .channel('game_events')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'game_events',
-          filter: `game_id.eq.${game.id}`
-        },
-        async (payload) => {
-          // Recarregar os eventos quando houver mudanças
-          const { data, error } = await supabase
-            .from('game_events')
-            .select('*')
-            .eq('game_id', game.id)
-            .order('created_at', { ascending: false })
-
-          if (error) {
-            console.error('Erro ao atualizar eventos:', error)
-            return
-          }
-
-          setEvents(data || [])
-        }
-      )
-      .subscribe()
-
     fetchData()
-
-    return () => {
-      subscription.unsubscribe()
-    }
   }, [game.id, game.team_a, game.team_b])
 
   const handleScoreChange = (team: 'A' | 'B', value: number) => {
@@ -103,27 +59,25 @@ const GameDetails = ({ game, onClose, onUpdateGame }: GameDetailsProps) => {
 
   const handleAddEvent = async (newEvent: Omit<GameEvent, 'id' | 'created_at' | 'updated_at'>) => {
     try {
-      const { data, error } = await supabase
-        .from('game_events')
-        .insert([{
-          ...newEvent,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }])
-        .select()
-        .single()
-
-      if (error) throw error
+      const highlights = game.highlights || []
+      const updatedGame = {
+        ...game,
+        highlights: [
+          ...highlights,
+          {
+            ...newEvent,
+            created_at: new Date().toISOString()
+          }
+        ]
+      }
 
       // Atualizar placar se for gol
       if (newEvent.type === 'goal') {
-        handleScoreChange(
-          newEvent.team,
-          newEvent.team === 'A' ? game.score_a + 1 : game.score_b + 1
-        )
+        updatedGame.score_a = newEvent.team === 'A' ? game.score_a + 1 : game.score_a
+        updatedGame.score_b = newEvent.team === 'B' ? game.score_b + 1 : game.score_b
       }
 
-      setEvents([data, ...events])
+      onUpdateGame(updatedGame)
       toast.success('Evento adicionado com sucesso!')
     } catch (error) {
       console.error('Erro ao adicionar evento:', error)
