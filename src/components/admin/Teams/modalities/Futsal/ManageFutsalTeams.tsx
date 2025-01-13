@@ -399,6 +399,37 @@ const ManageFutsalTeams = () => {
     }
   };
 
+  const handleDeleteTeam = async (teamId: number) => {
+    if (!window.confirm('Tem certeza que deseja excluir este time? Esta ação não pode ser desfeita.')) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('teams')
+        .delete()
+        .eq('id', teamId);
+
+      if (error) throw error;
+
+      // Atualizar estado local
+      const updatedTeams = teams.filter(team => team.id !== teamId);
+      setTeams(updatedTeams);
+      
+      // Se o time excluído for o selecionado, limpar a seleção
+      if (selectedTeam?.id === teamId) {
+        setSelectedTeam(null);
+      }
+
+      setIsEditingTeam(false);
+      setEditingTeam(null);
+      toast.success('Time excluído com sucesso!');
+    } catch (error) {
+      console.error('Erro ao excluir time:', error);
+      toast.error('Erro ao excluir time. Tente novamente.');
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center py-12">
@@ -468,6 +499,7 @@ const ManageFutsalTeams = () => {
         onChangeEditingTeam={(field, value) => editingTeam && setEditingTeam({ ...editingTeam, [field]: value })}
         positions={POSITIONS}
         formations={FORMATIONS}
+        onDeleteTeam={handleDeleteTeam}
       />
     </div>
   );

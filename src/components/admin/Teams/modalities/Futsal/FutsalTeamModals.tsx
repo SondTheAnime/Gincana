@@ -25,6 +25,7 @@ interface FutsalTeamModalsProps {
   onChangeEditingTeam: (field: string, value: any) => void;
   positions: readonly string[];
   formations: readonly string[];
+  onDeleteTeam: (teamId: number) => void;
 }
 
 const CATEGORIES = ['Masculino', 'Feminino', 'Misto'] as const;
@@ -51,7 +52,8 @@ const FutsalTeamModals = ({
   onChangeEditingPlayer,
   onChangeEditingTeam,
   positions,
-  formations
+  formations,
+  onDeleteTeam
 }: FutsalTeamModalsProps) => {
   const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>, isEditing: boolean) => {
     const file = e.target.files?.[0];
@@ -213,20 +215,31 @@ const FutsalTeamModals = ({
                 </select>
               </div>
 
-              <div className="flex justify-end space-x-3 mt-6">
-                <button
-                  type="button"
-                  onClick={isEditingTeam ? onCloseEditTeam : onCloseAddTeam}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 rounded-md"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 rounded-md"
-                >
-                  {isEditingTeam ? 'Salvar Alterações' : 'Adicionar Time'}
-                </button>
+              <div className="flex justify-between items-center mt-6">
+                {isEditingTeam && editingTeam && (
+                  <button
+                    type="button"
+                    onClick={() => onDeleteTeam(editingTeam.id)}
+                    className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600 rounded-md"
+                  >
+                    Excluir Time
+                  </button>
+                )}
+                <div className={`flex space-x-3 ${isEditingTeam ? 'ml-auto' : ''}`}>
+                  <button
+                    type="button"
+                    onClick={isEditingTeam ? onCloseEditTeam : onCloseAddTeam}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 rounded-md"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 rounded-md"
+                  >
+                    {isEditingTeam ? 'Salvar Alterações' : 'Adicionar Time'}
+                  </button>
+                </div>
               </div>
             </form>
           </div>
@@ -500,4 +513,4 @@ const FutsalTeamModals = ({
   );
 };
 
-export default FutsalTeamModals; 
+export default FutsalTeamModals;
