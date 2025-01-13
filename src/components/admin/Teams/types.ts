@@ -1,6 +1,15 @@
 export type SportType = string;
 export type CategoryType = 'Masculino' | 'Feminino' | 'Misto';
 
+export interface Modality {
+  id: number;
+  name: string;
+  icon: string;
+  description: string;
+  is_team_sport: boolean;
+  is_active: boolean;
+}
+
 export interface Team {
   id: number;
   name: string;

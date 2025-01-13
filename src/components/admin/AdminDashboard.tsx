@@ -7,6 +7,7 @@ import ManageCalendar from './Calendar/ManageCalendar';
 import ManageScore from './Score/ManageScore';
 import ManageTeams from './Teams/ManageTeams';
 import ManageModalities from './Modalities/ManageModalities';
+import ModalitySelector from './Teams/ModalitySelector';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -29,7 +30,7 @@ const AdminDashboard = () => {
       case 'score':
         return <ManageScore />;
       case 'teams':
-        return <ManageTeams />;
+        return <ModalitySelector />;
       case 'modalities':
         return <ManageModalities />;
       default:
