@@ -260,6 +260,19 @@ const ManageFutsalTeams = () => {
     if (!editingPlayer || !selectedTeam) return;
 
     try {
+      // Garantir que todas as estatísticas estejam presentes no objeto
+      const stats = {
+        goals: editingPlayer.stats.goals || 0,
+        assists: editingPlayer.stats.assists || 0,
+        saves: editingPlayer.stats.saves || 0,
+        clean_sheets: editingPlayer.stats.clean_sheets || 0,
+        minutes_played: editingPlayer.stats.minutes_played || 0,
+        fouls_committed: editingPlayer.stats.fouls_committed || 0,
+        fouls_suffered: editingPlayer.stats.fouls_suffered || 0,
+        yellow_cards: editingPlayer.stats.yellow_cards || 0,
+        red_cards: editingPlayer.stats.red_cards || 0
+      };
+
       const { error } = await supabase
         .from('players')
         .update({
@@ -267,17 +280,19 @@ const ManageFutsalTeams = () => {
           number: editingPlayer.number,
           photo: editingPlayer.photo,
           position: editingPlayer.position,
-          stats: editingPlayer.stats
+          stats: stats // Enviar o objeto stats completo
         })
         .eq('id', editingPlayer.id);
 
       if (error) throw error;
 
-      // Atualizar estado local
+      // Atualizar estado local com as novas estatísticas
       const updatedTeams = teams.map(team => ({
         ...team,
         players: team.players.map(p => 
-          p.id === editingPlayer.id ? editingPlayer : p
+          p.id === editingPlayer.id 
+            ? { ...editingPlayer, stats: stats }
+            : p
         )
       }));
       
