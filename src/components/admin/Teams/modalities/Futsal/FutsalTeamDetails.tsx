@@ -1,5 +1,5 @@
 import { Shield, UserPlus, User, Edit, Star } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { FutsalTeam, FutsalPlayer } from '../../types';
 import PlayerStatsModal from './PlayerStatsModal';
 
@@ -19,6 +19,14 @@ const FutsalTeamDetails = ({
   onToggleCaptain
 }: FutsalTeamDetailsProps) => {
   const [selectedPlayer, setSelectedPlayer] = useState<FutsalPlayer | null>(null);
+
+  // Adicionar este useEffect para atualizar o selectedPlayer quando o time ou jogadores mudarem
+  useEffect(() => {
+    if (selectedPlayer && selectedTeam) {
+      const updatedPlayer = selectedTeam.players.find(p => p.id === selectedPlayer.id);
+      setSelectedPlayer(updatedPlayer || null);
+    }
+  }, [selectedTeam, selectedTeam?.players]);
 
   if (!selectedTeam) {
     return (
@@ -79,7 +87,10 @@ const FutsalTeamDetails = ({
 
         <div className="flex items-center space-x-2">
           <button 
-            onClick={() => onToggleStarter(player)}
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleStarter(player);
+            }}
             className={`px-2 py-1 text-xs rounded-md transition-colors ${
               player.is_starter
                 ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
@@ -89,7 +100,10 @@ const FutsalTeamDetails = ({
             {player.is_starter ? 'Titular' : 'Reserva'}
           </button>
           <button 
-            onClick={() => onToggleCaptain(player)}
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleCaptain(player);
+            }}
             className={`p-1 rounded-md transition-colors ${
               player.is_captain
                 ? 'text-yellow-600 bg-yellow-100 dark:bg-yellow-900 dark:text-yellow-400'
@@ -100,7 +114,10 @@ const FutsalTeamDetails = ({
             <Star className="h-4 w-4" />
           </button>
           <button 
-            onClick={() => onEditPlayer(player)}
+            onClick={(e) => {
+              e.stopPropagation();
+              onEditPlayer(player);
+            }}
             className="p-1 text-gray-400 hover:text-green-600 dark:hover:text-green-400"
             aria-label="Editar jogador"
           >
@@ -231,4 +248,4 @@ const FutsalTeamDetails = ({
   );
 };
 
-export default FutsalTeamDetails; 
+export default FutsalTeamDetails;

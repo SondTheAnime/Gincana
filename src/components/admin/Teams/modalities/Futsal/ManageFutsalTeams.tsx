@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Users } from 'lucide-react';
-import { FutsalTeam, FutsalPlayer, Award } from '../../types';
+import { FutsalTeam, FutsalPlayer } from '../../types';
 import FutsalTeamsList from './FutsalTeamsList';
 import FutsalTeamDetails from './FutsalTeamDetails';
 import FutsalTeamModals from './FutsalTeamModals';
@@ -52,8 +52,12 @@ const ManageFutsalTeams = () => {
   useEffect(() => {
     fetchTeams();
 
-    const subscription = supabase
-      .channel('futsal_teams_changes')
+    // Criar os channels
+    const teamsChannel = supabase.channel('teams_changes');
+    const playersChannel = supabase.channel('players_changes');
+
+    // Configurar as subscriptions
+    teamsChannel
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'teams' },
@@ -61,8 +65,19 @@ const ManageFutsalTeams = () => {
       )
       .subscribe();
 
+    playersChannel
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'players' },
+        () => fetchTeams()
+      )
+      .subscribe();
+
+    // Cleanup function
     return () => {
-      subscription.unsubscribe();
+      // Remover as subscriptions e channels
+      supabase.removeChannel(teamsChannel);
+      supabase.removeChannel(playersChannel);
     };
   }, []);
 
@@ -76,20 +91,20 @@ const ManageFutsalTeams = () => {
 
       if (teamsError) throw teamsError;
 
-      const futsalTeams = teamsData.map(team => ({
+      const futsalTeams: FutsalTeam[] = teamsData.map((team: any) => ({
         ...team,
-        players: (team.players || []).map(player => ({
+        players: (team.players || []).map((player: any) => ({
           ...player,
           stats: {
-            goals: player.stats?.goals || 0,
-            assists: player.stats?.assists || 0,
-            saves: player.stats?.saves || 0,
-            clean_sheets: player.stats?.clean_sheets || 0,
-            minutes_played: player.stats?.minutes_played || 0,
-            fouls_committed: player.stats?.fouls_committed || 0,
-            fouls_suffered: player.stats?.fouls_suffered || 0,
-            yellow_cards: player.stats?.yellow_cards || 0,
-            red_cards: player.stats?.red_cards || 0
+        goals: player.stats?.goals || 0,
+        assists: player.stats?.assists || 0,
+        saves: player.stats?.saves || 0,
+        clean_sheets: player.stats?.clean_sheets || 0,
+        minutes_played: player.stats?.minutes_played || 0,
+        fouls_committed: player.stats?.fouls_committed || 0,
+        fouls_suffered: player.stats?.fouls_suffered || 0,
+        yellow_cards: player.stats?.yellow_cards || 0,
+        red_cards: player.stats?.red_cards || 0
           }
         }))
       })) as FutsalTeam[];
@@ -277,20 +292,26 @@ const ManageFutsalTeams = () => {
 
       if (error) throw error;
 
-      setTeams(prevTeams =>
-        prevTeams.map(team =>
-          team.id === player.team_id
-            ? {
-                ...team,
-                players: team.players.map(p =>
-                  p.id === player.id
-                    ? { ...p, is_starter: !p.is_starter }
-                    : p
-                )
-              }
-            : team
-        )
+      // Atualizar o estado dos times
+      const updatedTeams = teams.map(team =>
+        team.id === player.team_id
+          ? {
+              ...team,
+              players: team.players.map(p =>
+                p.id === player.id
+                  ? { ...p, is_starter: !p.is_starter }
+                  : p
+              )
+            }
+          : team
       );
+
+      setTeams(updatedTeams);
+      
+      // Atualizar o time selecionado
+      if (selectedTeam && selectedTeam.id === player.team_id) {
+        setSelectedTeam(updatedTeams.find(team => team.id === player.team_id) || null);
+      }
 
       toast.success(`${player.name} ${!player.is_starter ? 'definido como titular' : 'movido para reserva'}`);
     } catch (error) {
@@ -318,20 +339,26 @@ const ManageFutsalTeams = () => {
 
       if (error) throw error;
 
-      setTeams(prevTeams =>
-        prevTeams.map(team =>
-          team.id === player.team_id
-            ? {
-                ...team,
-                players: team.players.map(p =>
-                  p.id === player.id
-                    ? { ...p, is_captain: !p.is_captain }
-                    : { ...p, is_captain: false }
-                )
-              }
-            : team
-        )
+      // Atualizar o estado dos times
+      const updatedTeams = teams.map(team =>
+        team.id === player.team_id
+          ? {
+              ...team,
+              players: team.players.map(p =>
+                p.id === player.id
+                  ? { ...p, is_captain: !p.is_captain }
+                  : { ...p, is_captain: false }
+              )
+            }
+          : team
       );
+
+      setTeams(updatedTeams);
+      
+      // Atualizar o time selecionado
+      if (selectedTeam && selectedTeam.id === player.team_id) {
+        setSelectedTeam(updatedTeams.find(team => team.id === player.team_id) || null);
+      }
 
       toast.success(`${player.name} ${!player.is_captain ? 'definido como capitão' : 'removido da capitania'}`);
     } catch (error) {
@@ -414,4 +441,4 @@ const ManageFutsalTeams = () => {
   );
 };
 
-export default ManageFutsalTeams; 
+export default ManageFutsalTeams;
