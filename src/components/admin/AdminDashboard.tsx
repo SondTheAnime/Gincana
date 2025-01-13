@@ -5,7 +5,6 @@ import { supabase } from '../../lib/supabase';
 import AddGame from './Games/AddGame';
 import ManageCalendar from './Calendar/ManageCalendar';
 import ManageScore from './Score/ManageScore';
-import ManageTeams from './Teams/ManageTeams';
 import ManageModalities from './Modalities/ManageModalities';
 import ModalitySelector from './Teams/ModalitySelector';
 

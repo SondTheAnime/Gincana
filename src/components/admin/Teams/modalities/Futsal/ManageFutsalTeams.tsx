@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Users } from 'lucide-react';
-import { FutsalTeam, FutsalPlayer, Award } from './types';
+import { FutsalTeam, FutsalPlayer, Award } from '../../types';
 import FutsalTeamsList from './FutsalTeamsList';
 import FutsalTeamDetails from './FutsalTeamDetails';
 import FutsalTeamModals from './FutsalTeamModals';
@@ -8,7 +8,7 @@ import { supabase } from '../../../../../lib/supabase';
 import { toast } from 'react-toastify';
 
 const POSITIONS = ['Goleiro', 'Fixo', 'Ala Direita', 'Ala Esquerda', 'Pivô'] as const;
-const FORMATIONS = ['3-1', '2-2', '4-0', '1-2-1'] as const;
+const FORMATIONS = ['1-2-1', '2-2', '3-1', '4-0'] as const;
 
 const ManageFutsalTeams = () => {
   const [teams, setTeams] = useState<FutsalTeam[]>([]);
@@ -21,21 +21,21 @@ const ManageFutsalTeams = () => {
   const [editingTeam, setEditingTeam] = useState<FutsalTeam | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const [newTeam, setNewTeam] = useState({
+  const [newTeam, setNewTeam] = useState<Partial<FutsalTeam>>({
     name: '',
-    category: 'Masculino' as const,
+    category: 'Masculino',
     modality: 'Futsal',
     coach: '',
     assistant_coach: '',
     home_court: '',
-    formation: '3-1' as typeof FORMATIONS[number]
+    formation: '1-2-1'
   });
 
-  const [newPlayer, setNewPlayer] = useState({
+  const [newPlayer, setNewPlayer] = useState<Partial<FutsalPlayer>>({
     name: '',
-    number: '',
-    position: 'Fixo' as typeof POSITIONS[number],
-    photo: undefined as string | undefined,
+    number: 0,
+    position: 'Goleiro',
+    photo: undefined,
     stats: {
       goals: 0,
       assists: 0,
@@ -95,37 +95,11 @@ const ManageFutsalTeams = () => {
       })) as FutsalTeam[];
 
       setTeams(futsalTeams);
-
-      // Buscar premiações para cada time
-      for (const team of futsalTeams) {
-        fetchTeamAwards(team.id);
-      }
     } catch (error) {
       console.error('Erro ao buscar times:', error);
       toast.error('Erro ao carregar times. Tente novamente.');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchTeamAwards = async (teamId: number) => {
-    try {
-      const { data, error } = await supabase
-        .from('awards')
-        .select('*')
-        .eq('team_id', teamId)
-        .order('date', { ascending: false });
-
-      if (error) throw error;
-
-      // Atualizar o time com as premiações
-      setTeams(prevTeams => 
-        prevTeams.map(team => 
-          team.id === teamId ? { ...team, awards: data } : team
-        )
-      );
-    } catch (error) {
-      console.error('Erro ao buscar premiações:', error);
     }
   };
 
@@ -137,6 +111,16 @@ const ManageFutsalTeams = () => {
     setIsAddingPlayer(true);
   };
 
+  const handleEditTeam = (team: FutsalTeam) => {
+    setEditingTeam(team);
+    setIsEditingTeam(true);
+  };
+
+  const handleEditPlayer = (player: FutsalPlayer) => {
+    setEditingPlayer(player);
+    setIsEditingPlayer(true);
+  };
+
   const handleSubmitTeam = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -145,7 +129,7 @@ const ManageFutsalTeams = () => {
         .insert([{
           name: newTeam.name,
           category: newTeam.category,
-          modality: newTeam.modality,
+          modality: 'Futsal',
           coach: newTeam.coach,
           assistant_coach: newTeam.assistant_coach,
           home_court: newTeam.home_court,
@@ -164,7 +148,7 @@ const ManageFutsalTeams = () => {
         coach: '',
         assistant_coach: '',
         home_court: '',
-        formation: '3-1'
+        formation: '1-2-1'
       });
       setIsAddingTeam(false);
       toast.success('Time adicionado com sucesso!');
@@ -174,16 +158,45 @@ const ManageFutsalTeams = () => {
     }
   };
 
+  const handleUpdateTeam = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingTeam) return;
+
+    try {
+      const { error } = await supabase
+        .from('teams')
+        .update({
+          name: editingTeam.name,
+          category: editingTeam.category,
+          coach: editingTeam.coach,
+          assistant_coach: editingTeam.assistant_coach,
+          home_court: editingTeam.home_court,
+          formation: editingTeam.formation
+        })
+        .eq('id', editingTeam.id);
+
+      if (error) throw error;
+
+      await fetchTeams();
+      setIsEditingTeam(false);
+      setEditingTeam(null);
+      toast.success('Time atualizado com sucesso!');
+    } catch (error) {
+      console.error('Erro ao atualizar time:', error);
+      toast.error('Erro ao atualizar time. Tente novamente.');
+    }
+  };
+
   const handleSubmitPlayer = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedTeam) return;
+    if (!selectedTeam || !newPlayer.name || !newPlayer.position) return;
 
     try {
       const { data, error } = await supabase
         .from('players')
         .insert([{
           name: newPlayer.name,
-          number: parseInt(newPlayer.number),
+          number: newPlayer.number,
           team_id: selectedTeam.id,
           photo: newPlayer.photo,
           position: newPlayer.position,
@@ -194,9 +207,9 @@ const ManageFutsalTeams = () => {
 
       if (error) throw error;
 
-      setTeams(prevTeams =>
-        prevTeams.map(team =>
-          team.id === selectedTeam.id
+      setTeams(prevTeams => 
+        prevTeams.map(team => 
+          team.id === selectedTeam.id 
             ? { ...team, players: [...team.players, data as FutsalPlayer] }
             : team
         )
@@ -204,8 +217,8 @@ const ManageFutsalTeams = () => {
 
       setNewPlayer({
         name: '',
-        number: '',
-        position: 'Fixo',
+        number: 0,
+        position: 'Goleiro',
         photo: undefined,
         stats: {
           goals: 0,
@@ -227,6 +240,106 @@ const ManageFutsalTeams = () => {
     }
   };
 
+  const handleUpdatePlayer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingPlayer || !selectedTeam) return;
+
+    try {
+      const { error } = await supabase
+        .from('players')
+        .update({
+          name: editingPlayer.name,
+          number: editingPlayer.number,
+          photo: editingPlayer.photo,
+          position: editingPlayer.position,
+          stats: editingPlayer.stats
+        })
+        .eq('id', editingPlayer.id);
+
+      if (error) throw error;
+
+      await fetchTeams();
+      setIsEditingPlayer(false);
+      setEditingPlayer(null);
+      toast.success('Jogador atualizado com sucesso!');
+    } catch (error) {
+      console.error('Erro ao atualizar jogador:', error);
+      toast.error('Erro ao atualizar jogador. Tente novamente.');
+    }
+  };
+
+  const handleToggleStarter = async (player: FutsalPlayer) => {
+    try {
+      const { error } = await supabase
+        .from('players')
+        .update({ is_starter: !player.is_starter })
+        .eq('id', player.id);
+
+      if (error) throw error;
+
+      setTeams(prevTeams =>
+        prevTeams.map(team =>
+          team.id === player.team_id
+            ? {
+                ...team,
+                players: team.players.map(p =>
+                  p.id === player.id
+                    ? { ...p, is_starter: !p.is_starter }
+                    : p
+                )
+              }
+            : team
+        )
+      );
+
+      toast.success(`${player.name} ${!player.is_starter ? 'definido como titular' : 'movido para reserva'}`);
+    } catch (error) {
+      console.error('Erro ao atualizar status do jogador:', error);
+      toast.error('Erro ao atualizar status do jogador');
+    }
+  };
+
+  const handleToggleCaptain = async (player: FutsalPlayer) => {
+    try {
+      if (!player.is_captain && selectedTeam) {
+        const currentCaptain = selectedTeam.players.find(p => p.is_captain);
+        if (currentCaptain) {
+          await supabase
+            .from('players')
+            .update({ is_captain: false })
+            .eq('id', currentCaptain.id);
+        }
+      }
+
+      const { error } = await supabase
+        .from('players')
+        .update({ is_captain: !player.is_captain })
+        .eq('id', player.id);
+
+      if (error) throw error;
+
+      setTeams(prevTeams =>
+        prevTeams.map(team =>
+          team.id === player.team_id
+            ? {
+                ...team,
+                players: team.players.map(p =>
+                  p.id === player.id
+                    ? { ...p, is_captain: !p.is_captain }
+                    : { ...p, is_captain: false }
+                )
+              }
+            : team
+        )
+      );
+
+      toast.success(`${player.name} ${!player.is_captain ? 'definido como capitão' : 'removido da capitania'}`);
+    } catch (error) {
+      console.error('Erro ao atualizar capitão:', error);
+      toast.error('Erro ao atualizar capitão');
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center py-12">
@@ -238,7 +351,9 @@ const ManageFutsalTeams = () => {
   return (
     <div className="space-y-4 md:space-y-6">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-3 sm:space-y-0">
-        <h2 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">Gerenciar Times de Futsal</h2>
+        <h2 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">
+          Times de Futsal
+        </h2>
         <button
           onClick={handleAddTeam}
           className="flex items-center justify-center space-x-2 bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 text-white px-3 sm:px-4 py-2 rounded-md transition-colors text-sm sm:text-base w-full sm:w-auto"
@@ -253,19 +368,15 @@ const ManageFutsalTeams = () => {
           teams={teams}
           selectedTeam={selectedTeam}
           onSelectTeam={setSelectedTeam}
-          onEditTeam={(team) => {
-            setEditingTeam(team);
-            setIsEditingTeam(true);
-          }}
+          onEditTeam={handleEditTeam}
         />
         
         <FutsalTeamDetails
           selectedTeam={selectedTeam}
           onAddPlayer={handleAddPlayer}
-          onEditPlayer={(player) => {
-            setEditingPlayer(player);
-            setIsEditingPlayer(true);
-          }}
+          onEditPlayer={handleEditPlayer}
+          onToggleStarter={handleToggleStarter}
+          onToggleCaptain={handleToggleCaptain}
         />
       </div>
 
@@ -278,8 +389,6 @@ const ManageFutsalTeams = () => {
         editingTeam={editingTeam}
         newTeam={newTeam}
         newPlayer={newPlayer}
-        positions={POSITIONS}
-        formations={FORMATIONS}
         onCloseAddTeam={() => setIsAddingTeam(false)}
         onCloseAddPlayer={() => setIsAddingPlayer(false)}
         onCloseEditPlayer={() => {
@@ -292,18 +401,14 @@ const ManageFutsalTeams = () => {
         }}
         onSubmitTeam={handleSubmitTeam}
         onSubmitPlayer={handleSubmitPlayer}
+        onUpdatePlayer={handleUpdatePlayer}
+        onUpdateTeam={handleUpdateTeam}
         onChangeNewTeam={(field, value) => setNewTeam({ ...newTeam, [field]: value })}
-        onChangeNewPlayer={(field, value) => {
-          if (field.startsWith('stats.')) {
-            const statField = field.split('.')[1];
-            setNewPlayer({
-              ...newPlayer,
-              stats: { ...newPlayer.stats, [statField]: value }
-            });
-          } else {
-            setNewPlayer({ ...newPlayer, [field]: value });
-          }
-        }}
+        onChangeNewPlayer={(field, value) => setNewPlayer({ ...newPlayer, [field]: value })}
+        onChangeEditingPlayer={(field, value) => editingPlayer && setEditingPlayer({ ...editingPlayer, [field]: value })}
+        onChangeEditingTeam={(field, value) => editingTeam && setEditingTeam({ ...editingTeam, [field]: value })}
+        positions={POSITIONS}
+        formations={FORMATIONS}
       />
     </div>
   );

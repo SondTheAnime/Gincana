@@ -1,5 +1,5 @@
 import { Shield, Trophy, Edit, Users } from 'lucide-react';
-import { FutsalTeam, Award } from './types';
+import { FutsalTeam } from '../../types';
 
 interface FutsalTeamsListProps {
   teams: FutsalTeam[];
@@ -8,86 +8,102 @@ interface FutsalTeamsListProps {
   onEditTeam: (team: FutsalTeam) => void;
 }
 
-const FutsalTeamsList = ({ teams, selectedTeam, onSelectTeam, onEditTeam }: FutsalTeamsListProps) => {
-  return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-3 sm:p-6">
-      <div className="flex items-center space-x-2 mb-3 sm:mb-4">
-        <Shield className="h-4 w-4 sm:h-5 sm:w-5 text-green-600 dark:text-green-400" />
-        <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">Times de Futsal</h3>
+const FutsalTeamsList = ({
+  teams,
+  selectedTeam,
+  onSelectTeam,
+  onEditTeam
+}: FutsalTeamsListProps) => {
+  if (teams.length === 0) {
+    return (
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 text-center">
+        <Shield className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
+        <p className="text-gray-500 dark:text-gray-400">
+          Nenhum time de Futsal cadastrado
+        </p>
       </div>
-      <div className="space-y-2 sm:space-y-3">
-        {teams.map(team => (
-          <div
-            key={team.id}
-            onClick={() => onSelectTeam(team)}
-            className={`p-2 sm:p-3 rounded-md cursor-pointer transition-colors ${
-              selectedTeam?.id === team.id
-                ? 'bg-green-50 dark:bg-green-900'
-                : 'hover:bg-gray-50 dark:hover:bg-gray-700'
-            }`}
-          >
-            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-2 sm:space-y-0">
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {teams.map((team) => (
+        <div
+          key={team.id}
+          className={`bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 cursor-pointer transition-colors ${
+            selectedTeam?.id === team.id
+              ? 'ring-2 ring-green-500 dark:ring-green-400'
+              : 'hover:bg-gray-50 dark:hover:bg-gray-700'
+          }`}
+          onClick={() => onSelectTeam(team)}
+        >
+          <div className="flex items-start justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="bg-green-100 dark:bg-green-900 p-2 rounded-lg">
+                <Shield className="h-6 w-6 text-green-600 dark:text-green-400" />
+              </div>
               <div>
-                <p className="text-sm sm:text-base font-medium text-gray-900 dark:text-white">{team.name}</p>
-                <div className="flex items-center space-x-2 text-xs sm:text-sm text-gray-500 dark:text-gray-400">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  {team.name}
+                </h3>
+                <div className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
                   <span>{team.category}</span>
                   <span>•</span>
-                  <span>{team.formation || '3-1'}</span>
-                  {team.coach && (
-                    <>
-                      <span>•</span>
-                      <span>Técnico: {team.coach}</span>
-                    </>
-                  )}
+                  <span>{team.formation}</span>
                 </div>
-                {team.home_court && (
-                  <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1">
-                    Quadra: {team.home_court}
-                  </div>
-                )}
-              </div>
-              <div className="flex items-center justify-between sm:justify-end sm:space-x-4">
-                <div className="flex items-center text-gray-500 dark:text-gray-400 text-xs">
-                  <Users className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
-                  <span>{team.players?.length || 0}</span>
-                </div>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onEditTeam(team);
-                  }}
-                  className="p-1 text-gray-400 hover:text-green-600 dark:hover:text-green-400"
-                  aria-label="Editar time"
-                >
-                  <Edit className="h-3 w-3 sm:h-4 sm:w-4" />
-                </button>
               </div>
             </div>
-            {team.awards?.length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-1 sm:gap-2">
-                {team.awards.map((award: Award) => (
-                  <div
-                    key={award.id}
-                    className="bg-yellow-100 dark:bg-yellow-900 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-md flex items-center space-x-1"
-                  >
-                    <Trophy className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-yellow-600 dark:text-yellow-400" />
-                    <span className="text-yellow-700 dark:text-yellow-300 text-xs">
-                      {award.title}
-                    </span>
-                  </div>
-                ))}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onEditTeam(team);
+              }}
+              className="p-1 text-gray-400 hover:text-green-600 dark:hover:text-green-400"
+              aria-label="Editar time"
+            >
+              <Edit className="h-5 w-5" />
+            </button>
+          </div>
+
+          <div className="mt-4 grid grid-cols-3 gap-4 text-center text-sm">
+            <div>
+              <div className="text-gray-500 dark:text-gray-400">Técnico</div>
+              <div className="font-medium text-gray-900 dark:text-white truncate">
+                {team.coach}
               </div>
-            )}
+            </div>
+            <div>
+              <div className="text-gray-500 dark:text-gray-400">Quadra</div>
+              <div className="font-medium text-gray-900 dark:text-white truncate">
+                {team.home_court}
+              </div>
+            </div>
+            <div>
+              <div className="text-gray-500 dark:text-gray-400">Jogadores</div>
+              <div className="font-medium text-gray-900 dark:text-white">
+                {team.players.length}
+              </div>
+            </div>
           </div>
-        ))}
-        {teams.length === 0 && (
-          <div className="text-center py-4">
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Nenhum time de futsal cadastrado
-            </p>
-          </div>
-        )}
-      </div>
+
+          {team.players.length > 0 && (
+            <div className="mt-4 flex items-center justify-between text-sm">
+              <div className="flex items-center space-x-2">
+                <Users className="h-4 w-4 text-gray-400" />
+                <span className="text-gray-500 dark:text-gray-400">
+                  {team.players.filter(p => p.is_starter).length} titulares
+                </span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Trophy className="h-4 w-4 text-yellow-500" />
+                <span className="text-gray-500 dark:text-gray-400">
+                  {team.players.reduce((total, player) => total + player.stats.goals, 0)} gols
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+      ))}
     </div>
   );
 };
