@@ -3,6 +3,7 @@ import { Modality } from './types';
 import { supabase } from '../../../lib/supabase';
 import { toast } from 'react-toastify';
 import ManageFutsalTeams from './modalities/Futsal/ManageFutsalTeams';
+import ManageVoleiTeams from './modalities/Volei/ManageVoleiTeams';
 import ManageTeams from './ManageTeams';
 
 const ModalitySelector = () => {
@@ -77,6 +78,31 @@ const ModalitySelector = () => {
             <ManageFutsalTeams />
           </div>
         );
+      case 'Volei':
+        return (
+          <div>
+            <button
+              onClick={handleBack}
+              className="mb-4 flex items-center space-x-2 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
+            >
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15 19l-7-7 7-7"
+                />
+              </svg>
+              <span>Voltar para Modalidades</span>
+            </button>
+            <ManageVoleiTeams />
+          </div>
+        );
       default:
         return (
           <div>
@@ -104,7 +130,7 @@ const ModalitySelector = () => {
         );
     }
   }
-
+  
   return (
     <div className="space-y-4 md:space-y-6">
       <h2 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">
@@ -141,4 +167,4 @@ const ModalitySelector = () => {
   );
 };
 
-export default ModalitySelector; 
+export default ModalitySelector;

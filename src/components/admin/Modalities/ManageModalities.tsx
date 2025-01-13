@@ -44,9 +44,26 @@ const ManageModalities = () => {
   };
 
   const handleDeleteModality = async (id: string) => {
-    if (!window.confirm('Tem certeza que deseja excluir esta modalidade?')) return;
-
     try {
+      // Primeiro, verificar se existem times usando esta modalidade
+      const { data: teams, error: teamsError } = await supabase
+        .from('teams')
+        .select('id, name')
+        .eq('modality', id);
+
+      if (teamsError) throw teamsError;
+
+      // Se existirem times, alertar o usuário
+      if (teams && teams.length > 0) {
+        toast.error(
+          'Não é possível excluir esta modalidade pois existem times cadastrados nela. Exclua os times primeiro.'
+        );
+        return;
+      }
+
+      // Se não houver times, prosseguir com a exclusão
+      if (!window.confirm('Tem certeza que deseja excluir esta modalidade?')) return;
+
       const { error } = await supabase
         .from('modalities')
         .delete()
@@ -140,4 +157,4 @@ const ManageModalities = () => {
   );
 };
 
-export default ManageModalities; 
+export default ManageModalities;
