@@ -273,7 +273,24 @@ const ManageFutsalTeams = () => {
 
       if (error) throw error;
 
-      await fetchTeams();
+      // Atualizar estado local
+      const updatedTeams = teams.map(team => ({
+        ...team,
+        players: team.players.map(p => 
+          p.id === editingPlayer.id ? editingPlayer : p
+        )
+      }));
+      
+      setTeams(updatedTeams);
+      
+      // Atualizar selectedTeam se necessário
+      if (selectedTeam) {
+        const updatedSelectedTeam = updatedTeams.find(t => t.id === selectedTeam.id);
+        if (updatedSelectedTeam) {
+          setSelectedTeam(updatedSelectedTeam);
+        }
+      }
+
       setIsEditingPlayer(false);
       setEditingPlayer(null);
       toast.success('Jogador atualizado com sucesso!');

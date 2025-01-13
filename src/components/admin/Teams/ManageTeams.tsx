@@ -197,7 +197,7 @@ const ManageTeams = ({ modalityFilter }: ManageTeamsProps) => {
   const handleUpdatePlayer = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingPlayer || !selectedTeam) return;
-
+  
     try {
       const { error } = await supabase
         .from('players')
@@ -210,10 +210,17 @@ const ManageTeams = ({ modalityFilter }: ManageTeamsProps) => {
           red_cards: editingPlayer.red_cards
         })
         .eq('id', editingPlayer.id);
-
+  
       if (error) throw error;
-
-      await fetchTeamPlayers(selectedTeam.id);
+  
+      // Atualizar o estado local imediatamente
+      setPlayers(prev => ({
+        ...prev,
+        [selectedTeam.id]: prev[selectedTeam.id].map(player =>
+          player.id === editingPlayer.id ? editingPlayer : player
+        )
+      }));
+  
       setIsEditingPlayer(false);
       setEditingPlayer(null);
       toast.success('Jogador atualizado com sucesso!');
