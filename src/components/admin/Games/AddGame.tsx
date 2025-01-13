@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../../lib/supabase';
 import { toast } from 'react-toastify';
 import { Team } from '../Teams/types';
+import { Modality } from '../Modalities/types';
 
 interface AddGameProps {
   isOpen: boolean;
@@ -33,7 +34,8 @@ const AddGame = ({ isOpen, onClose }: AddGameProps) => {
   const [teams, setTeams] = useState<Team[]>([]);
   const [filteredTeams, setFilteredTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(false);
-  const [sports, setSports] = useState<string[]>([]);
+  const [modalities, setModalities] = useState<Modality[]>([]);
+  const [selectedModality, setSelectedModality] = useState<Modality | null>(null);
 
   const categories = ['Masculino', 'Feminino', 'Misto'];
   const locations = ['Quadra Principal', 'Quadra Coberta', 'Campo', 'Piscina', 'Ginásio'];
@@ -54,23 +56,16 @@ const AddGame = ({ isOpen, onClose }: AddGameProps) => {
       }
     };
 
-    const fetchSports = async () => {
+    const fetchModalities = async () => {
       try {
-        console.log('Buscando modalidades...');
         const { data, error } = await supabase
           .from('modalities')
           .select('*')
-          .eq('is_team_sport', true)
           .eq('is_active', true)
           .order('name');
 
-        if (error) {
-          console.error('Erro na query:', error);
-          throw error;
-        }
-        
-        console.log('Modalidades encontradas:', data);
-        setSports(data?.map(sport => sport.name) || []);
+        if (error) throw error;
+        setModalities(data || []);
       } catch (error) {
         console.error('Erro ao buscar modalidades:', error);
         toast.error('Erro ao carregar modalidades. Tente novamente.');
@@ -79,17 +74,22 @@ const AddGame = ({ isOpen, onClose }: AddGameProps) => {
 
     if (isOpen) {
       fetchTeams();
-      fetchSports();
+      fetchModalities();
     }
   }, [isOpen]);
 
   useEffect(() => {
-    // Filtrar times baseado na modalidade e categoria selecionadas
-    const filtered = teams.filter(team => 
-      (!formData.sport || team.modality === formData.sport) &&
-      (!formData.category || team.category === formData.category)
-    );
-    setFilteredTeams(filtered);
+    const modality = modalities.find(m => m.name === formData.sport);
+    setSelectedModality(modality || null);
+
+    if (modality?.is_team_sport) {
+      // Filtrar times baseado na modalidade e categoria selecionadas
+      const filtered = teams.filter(team => 
+        (!formData.sport || team.modality === formData.sport) &&
+        (!formData.category || team.category === formData.category)
+      );
+      setFilteredTeams(filtered);
+    }
     
     // Limpar seleção de times quando mudar modalidade ou categoria
     setFormData(prev => ({
@@ -97,7 +97,7 @@ const AddGame = ({ isOpen, onClose }: AddGameProps) => {
       team_a: '',
       team_b: ''
     }));
-  }, [formData.sport, formData.category, teams]);
+  }, [formData.sport, formData.category, teams, modalities]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -112,28 +112,49 @@ const AddGame = ({ isOpen, onClose }: AddGameProps) => {
     setLoading(true);
 
     try {
-      const { error } = await supabase
-        .from('games')
-        .insert([{
-          sport: formData.sport,
-          category: formData.category,
+      if (!selectedModality) {
+        throw new Error('Modalidade não encontrada');
+      }
+
+      if (selectedModality.is_team_sport) {
+        // Verificar se existem times suficientes para a modalidade selecionada
+        const teamsInModality = teams.filter(t => t.modality === formData.sport && t.category === formData.category);
+
+        if (teamsInModality.length < 2) {
+          throw new Error(`São necessários pelo menos 2 times de ${formData.sport} na categoria ${formData.category} para criar um jogo`);
+        }
+      }
+
+      const gameData = {
+        sport: formData.sport,
+        category: formData.category,
+        date: formData.date,
+        time: formData.time,
+        location: formData.location,
+        status: 'scheduled',
+        score_a: 0,
+        score_b: 0,
+      };
+
+      // Adicionar team_a e team_b apenas se for modalidade de equipe
+      if (selectedModality.is_team_sport) {
+        Object.assign(gameData, {
           team_a: parseInt(formData.team_a),
           team_b: parseInt(formData.team_b),
-          date: formData.date,
-          time: formData.time,
-          location: formData.location,
-          status: 'scheduled',
-          score_a: 0,
-          score_b: 0,
-        }]);
+        });
+      }
+
+      const { error } = await supabase
+        .from('games')
+        .insert([gameData]);
 
       if (error) throw error;
 
       toast.success('Jogo adicionado com sucesso!');
       onClose();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao adicionar jogo:', error);
-      toast.error('Erro ao adicionar jogo. Tente novamente.');
+      toast.error(error.message || 'Erro ao adicionar jogo. Tente novamente.');
     } finally {
       setLoading(false);
     }
@@ -168,8 +189,8 @@ const AddGame = ({ isOpen, onClose }: AddGameProps) => {
               className="w-full rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white py-1.5 sm:py-2 px-2 sm:px-3 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-green-500 dark:focus:ring-green-400"
             >
               <option value="">Selecione uma modalidade</option>
-              {sports.map(sport => (
-                <option key={sport} value={sport}>{sport}</option>
+              {modalities.map(modality => (
+                <option key={modality.id} value={modality.name}>{modality.name}</option>
               ))}
             </select>
           </div>
@@ -192,49 +213,53 @@ const AddGame = ({ isOpen, onClose }: AddGameProps) => {
             </select>
           </div>
 
-          <div>
-            <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 sm:mb-2">
-              Time A
-            </label>
-            <select
-              name="team_a"
-              value={formData.team_a}
-              onChange={handleChange}
-              required
-              disabled={!formData.sport || !formData.category}
-              className="w-full rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white py-1.5 sm:py-2 px-2 sm:px-3 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-green-500 dark:focus:ring-green-400 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <option value="">Selecione o primeiro time</option>
-              {filteredTeams
-                .filter(team => team.id.toString() !== formData.team_b)
-                .map(team => (
-                  <option key={team.id} value={team.id}>{team.name}</option>
-                ))
-              }
-            </select>
-          </div>
+          {selectedModality?.is_team_sport && (
+            <>
+              <div>
+                <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 sm:mb-2">
+                  Time A
+                </label>
+                <select
+                  name="team_a"
+                  value={formData.team_a}
+                  onChange={handleChange}
+                  required
+                  disabled={!formData.sport || !formData.category}
+                  className="w-full rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white py-1.5 sm:py-2 px-2 sm:px-3 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-green-500 dark:focus:ring-green-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <option value="">Selecione o primeiro time</option>
+                  {filteredTeams
+                    .filter(team => team.id.toString() !== formData.team_b)
+                    .map(team => (
+                      <option key={team.id} value={team.id}>{team.name}</option>
+                    ))
+                  }
+                </select>
+              </div>
 
-          <div>
-            <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 sm:mb-2">
-              Time B
-            </label>
-            <select
-              name="team_b"
-              value={formData.team_b}
-              onChange={handleChange}
-              required
-              disabled={!formData.sport || !formData.category}
-              className="w-full rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white py-1.5 sm:py-2 px-2 sm:px-3 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-green-500 dark:focus:ring-green-400 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <option value="">Selecione o segundo time</option>
-              {filteredTeams
-                .filter(team => team.id.toString() !== formData.team_a)
-                .map(team => (
-                  <option key={team.id} value={team.id}>{team.name}</option>
-                ))
-              }
-            </select>
-          </div>
+              <div>
+                <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 sm:mb-2">
+                  Time B
+                </label>
+                <select
+                  name="team_b"
+                  value={formData.team_b}
+                  onChange={handleChange}
+                  required
+                  disabled={!formData.sport || !formData.category}
+                  className="w-full rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white py-1.5 sm:py-2 px-2 sm:px-3 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-green-500 dark:focus:ring-green-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <option value="">Selecione o segundo time</option>
+                  {filteredTeams
+                    .filter(team => team.id.toString() !== formData.team_a)
+                    .map(team => (
+                      <option key={team.id} value={team.id}>{team.name}</option>
+                    ))
+                  }
+                </select>
+              </div>
+            </>
+          )}
 
           <div>
             <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 sm:mb-2">
@@ -301,7 +326,7 @@ const AddGame = ({ isOpen, onClose }: AddGameProps) => {
         </form>
       </div>
     </div>
-  );
-};
+  )
+}
 
 export default AddGame; 
