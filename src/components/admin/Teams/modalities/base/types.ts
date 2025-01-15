@@ -14,6 +14,8 @@ export interface BasePlayer {
   is_starter: boolean;
   is_captain: boolean;
   stats: BasePlayerStats;
+  style?: string;
+  grip?: string;
 }
 
 // Interface base para time

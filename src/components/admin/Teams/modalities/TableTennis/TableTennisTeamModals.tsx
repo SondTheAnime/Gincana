@@ -1,5 +1,7 @@
 import { X } from 'lucide-react';
 import { TableTennisTeam, TableTennisPlayer } from './types';
+import { Dialog, Transition } from '@headlessui/react';
+import { Fragment } from 'react';
 
 interface TableTennisTeamModalsProps {
   isAddingTeam: boolean;
@@ -232,8 +234,8 @@ const TableTennisTeamModals = ({
         </label>
         <select
           id={`${isEditing ? 'edit' : 'new'}-player-grip`}
-          value={player.grip_style || 'Clássica'}
-          onChange={(e) => onChange('grip_style', e.target.value)}
+          value={player.grip_style|| 'Clássica'}
+          onChange={(e) => onChange('grip', e.target.value)}
           className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
         >
           <option value="Clássica">Clássica</option>
@@ -252,7 +254,7 @@ const TableTennisTeamModals = ({
         <select
           id={`${isEditing ? 'edit' : 'new'}-player-style`}
           value={player.play_style || 'All-around'}
-          onChange={(e) => onChange('play_style', e.target.value)}
+          onChange={(e) => onChange('style', e.target.value)}
           className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
         >
           <option value="Ofensivo">Ofensivo</option>
@@ -297,35 +299,56 @@ const TableTennisTeamModals = ({
     if (!isOpen) return null;
 
     return (
-      <div className="fixed inset-0 z-10 overflow-y-auto">
-        <div className="flex min-h-screen items-end justify-center px-4 pb-20 pt-4 text-center sm:block sm:p-0">
-          <div
-            className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
-            onClick={onClose}
-          />
+      <Transition appear show={isOpen} as={Fragment}>
+        <Dialog as="div" className="relative z-50" onClose={onClose}>
+          <Transition.Child
+            as={Fragment}
+            enter="ease-out duration-300"
+            enterFrom="opacity-0"
+            enterTo="opacity-100"
+            leave="ease-in duration-200"
+            leaveFrom="opacity-100"
+            leaveTo="opacity-0"
+          >
+            <div className="fixed inset-0" />
+          </Transition.Child>
 
-          <div className="inline-block transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left align-bottom shadow-xl transition-all dark:bg-gray-800 sm:my-8 sm:w-full sm:max-w-lg sm:p-6 sm:align-middle">
-            <div className="absolute right-0 top-0 hidden pr-4 pt-4 sm:block">
-              <button
-                type="button"
-                className="rounded-md text-gray-400 hover:text-gray-500 focus:outline-none dark:hover:text-gray-300"
-                onClick={onClose}
+          <div className="fixed inset-0 overflow-y-auto">
+            <div className="flex min-h-full items-center justify-center p-4 text-center">
+              <Transition.Child
+                as={Fragment}
+                enter="ease-out duration-300"
+                enterFrom="opacity-0 scale-95"
+                enterTo="opacity-100 scale-100"
+                leave="ease-in duration-200"
+                leaveFrom="opacity-100 scale-100"
+                leaveTo="opacity-0 scale-95"
               >
-                <span className="sr-only">Fechar</span>
-                <X className="h-6 w-6" />
-              </button>
-            </div>
-            <div className="sm:flex sm:items-start">
-              <div className="mt-3 w-full text-center sm:ml-4 sm:mt-0 sm:text-left">
-                <h3 className="text-lg font-medium leading-6 text-gray-900 dark:text-white">
-                  {title}
-                </h3>
-                <div className="mt-4">{content}</div>
-              </div>
+                <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all dark:bg-gray-800 sm:max-w-lg">
+                  <div className="absolute right-0 top-0 pr-4 pt-4">
+                    <button
+                      type="button"
+                      className="rounded-md text-gray-400 hover:text-gray-500 focus:outline-none dark:hover:text-gray-300"
+                      onClick={onClose}
+                    >
+                      <span className="sr-only">Fechar</span>
+                      <X className="h-6 w-6" />
+                    </button>
+                  </div>
+                  
+                  <Dialog.Title className="text-lg font-medium leading-6 text-gray-900 dark:text-white">
+                    {title}
+                  </Dialog.Title>
+                  
+                  <div className="mt-4">
+                    {content}
+                  </div>
+                </Dialog.Panel>
+              </Transition.Child>
             </div>
           </div>
-        </div>
-      </div>
+        </Dialog>
+      </Transition>
     );
   };
 

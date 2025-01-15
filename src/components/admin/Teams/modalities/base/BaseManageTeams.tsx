@@ -52,7 +52,9 @@ export function BaseManageTeams<T extends BaseTeam, P extends BasePlayer>({
     number: 0,
     position: positions[0],
     photo: undefined,
-    stats: defaultPlayerStats
+    stats: defaultPlayerStats,
+    style: '',
+    grip: ''
   } as Partial<P>);
 
   useEffect(() => {
@@ -190,7 +192,9 @@ export function BaseManageTeams<T extends BaseTeam, P extends BasePlayer>({
           team_id: selectedTeam.id,
           photo: newPlayer.photo,
           position: newPlayer.position,
-          stats: newPlayer.stats
+          stats: newPlayer.stats,
+          style: newPlayer.style,
+          grip: newPlayer.grip
         }])
         .select()
         .single();
@@ -225,7 +229,9 @@ export function BaseManageTeams<T extends BaseTeam, P extends BasePlayer>({
           number: editingPlayer.number,
           photo: editingPlayer.photo,
           position: editingPlayer.position,
-          stats: editingPlayer.stats
+          stats: editingPlayer.stats,
+          style: editingPlayer.style,
+          grip: editingPlayer.grip
         })
         .eq('id', editingPlayer.id);
 

@@ -17,8 +17,10 @@ const ManageTableTennisTeams = () => {
     position: data.position || POSITIONS[0],
     is_starter: data.is_starter || false,
     is_captain: data.is_captain || false,
-    grip_style: data.grip_style || 'Clássica',
-    play_style: data.play_style || 'All-around',
+    grip_style: data.grip || data.grip_style || 'Clássica',
+    grip: data.grip || data.grip_style || 'Clássica',
+    play_style: data.style || 'All-around',
+    style: data.style || 'All-around',
     stats: {
       minutes_played: data.stats?.minutes_played || 0,
       matches_played: data.stats?.matches_played || 0,
