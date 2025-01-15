@@ -1,16 +1,19 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
-import App from '../App';
 import AdminLogin from '../components/admin/AdminLogin';
 import AdminDashboard from '../components/admin/AdminDashboard';
 import LiveGames from '../components/home/LiveGames/LiveGames';
 import UpcomingMatches from '../components/home/UpcomingMatches';
 import Home from '../pages/Home';
 import PrivateRoute from '../components/admin/PrivateRoute';
+import Inscricao from '../pages/Inscricao';
+import InscricaoTime from '../pages/InscricaoTime';
+import InscricaoJogador from '../pages/InscricaoJogador';
+import { Root } from '../components/Root';
 
 export const router = createBrowserRouter([
   {
     path: '/',
-    element: <App />,
+    element: <Root />,
     children: [
       {
         index: true,
@@ -23,6 +26,23 @@ export const router = createBrowserRouter([
       {
         path: 'calendario',
         element: <UpcomingMatches />,
+      },
+      {
+        path: 'inscricao',
+        children: [
+          {
+            index: true,
+            element: <Inscricao />,
+          },
+          {
+            path: 'time',
+            element: <InscricaoTime />,
+          },
+          {
+            path: 'jogador',
+            element: <InscricaoJogador />,
+          },
+        ],
       },
       {
         path: 'admin',

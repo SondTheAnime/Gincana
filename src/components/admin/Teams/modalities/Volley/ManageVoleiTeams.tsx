@@ -25,7 +25,7 @@ const ManageVoleiTeams = () => {
   const [newTeam, setNewTeam] = useState<Partial<VoleiTeam>>({
     name: '',
     category: 'Masculino',
-    modality: 'Volei',
+    modality: 'Vôlei',
     coach: '',
     assistant_coach: '',
     home_court: '',
@@ -85,7 +85,7 @@ const ManageVoleiTeams = () => {
       const { data: teamsData, error: teamsError } = await supabase
         .from('teams')
         .select('*, players(*)')
-        .eq('modality', 'Volei')
+        .eq('modality', 'Vôlei')
         .order('name');
 
       if (teamsError) throw teamsError;
@@ -138,7 +138,7 @@ const ManageVoleiTeams = () => {
         .insert([{
           name: newTeam.name,
           category: newTeam.category,
-          modality: 'Volei',
+          modality: 'Vôlei',
           coach: newTeam.coach,
           assistant_coach: newTeam.assistant_coach,
           home_court: newTeam.home_court,
@@ -153,7 +153,7 @@ const ManageVoleiTeams = () => {
       setNewTeam({
         name: '',
         category: 'Masculino',
-        modality: 'Volei',
+        modality: 'Vôlei',
         coach: '',
         assistant_coach: '',
         home_court: '',

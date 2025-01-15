@@ -1,4 +1,4 @@
-import { Plus, Calendar, Trophy, Users, LogOut, Dumbbell } from 'lucide-react';
+import { Plus, Calendar, Trophy, Users, LogOut, Dumbbell, ClipboardList } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
@@ -7,10 +7,11 @@ import ManageCalendar from './Calendar/ManageCalendar';
 import ManageScore from './Score/ManageScore';
 import ManageModalities from './Modalities/ManageModalities';
 import ModalitySelector from './Teams/ModalitySelector';
+import InscricaoRequests from './Teams/InscricaoRequests';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
-  const [activeComponent, setActiveComponent] = useState<'calendar' | 'score' | 'teams' | 'modalities' | null>(null);
+  const [activeComponent, setActiveComponent] = useState<'calendar' | 'score' | 'teams' | 'modalities' | 'requests' | null>(null);
   const [isAddGameModalOpen, setIsAddGameModalOpen] = useState(false);
 
   const handleLogout = async () => {
@@ -32,6 +33,8 @@ const AdminDashboard = () => {
         return <ModalitySelector />;
       case 'modalities':
         return <ManageModalities />;
+      case 'requests':
+        return <InscricaoRequests />;
       default:
         return null;
     }
@@ -77,6 +80,14 @@ const AdminDashboard = () => {
       subtitle: 'Administrar esportes',
       action: 'Gerenciar modalidades',
       onClick: () => setActiveComponent('modalities')
+    },
+    {
+      id: 'requests',
+      icon: <ClipboardList className="h-5 w-5 md:h-6 md:w-6 text-green-600 dark:text-green-400" />,
+      title: 'Solicitações',
+      subtitle: 'Gerenciar inscrições',
+      action: 'Ver solicitações',
+      onClick: () => setActiveComponent('requests')
     }
   ];
 

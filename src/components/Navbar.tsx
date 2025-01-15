@@ -63,6 +63,7 @@ const Navbar = () => {
               <Link to="/" className="hover:text-green-200 dark:hover:text-gray-300 transition-colors">Início</Link>
               <Link to="/jogos" className="hover:text-green-200 dark:hover:text-gray-300 transition-colors">Jogos</Link>
               <Link to="/calendario" className="hover:text-green-200 dark:hover:text-gray-300 transition-colors">Calendário</Link>
+              <Link to="/inscricao" className="hover:text-green-200 dark:hover:text-gray-300 transition-colors">Inscrição</Link>
             </div>
             <div className="flex items-center space-x-3">
               <button
@@ -126,6 +127,13 @@ const Navbar = () => {
               onClick={closeMenu}
             >
               Calendário
+            </Link>
+            <Link 
+              to="/inscricao" 
+              className="hover:text-green-200 dark:hover:text-gray-300 transition-colors text-sm"
+              onClick={closeMenu}
+            >
+              Inscrição
             </Link>
             <button 
               onClick={() => {

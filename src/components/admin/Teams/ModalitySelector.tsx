@@ -80,7 +80,7 @@ const ModalitySelector = () => {
             <ManageFutsalTeams />
           </div>
         );
-      case 'Volei':
+      case 'Vôlei':
         return (
           <div>
             <button
@@ -203,7 +203,7 @@ const ModalitySelector = () => {
                       alt="Futsal"
                       className="w-6 h-6"
                     />
-                  ) : modality.name === 'Volei' ? (
+                  ) : modality.name === 'Vôlei' ? (
                     <img
                       src="/src/assets/icons/volleyball.svg"
                       alt="Volei"
