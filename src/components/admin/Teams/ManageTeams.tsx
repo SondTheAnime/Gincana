@@ -7,7 +7,11 @@ import TeamModals from './TeamModals';
 import { supabase } from '../../../lib/supabase';
 import { toast } from 'react-toastify';
 
-const ManageTeams = () => {
+interface ManageTeamsProps {
+  modalityFilter?: string;
+}
+
+const ManageTeams = ({ modalityFilter }: ManageTeamsProps) => {
   const [teams, setTeams] = useState<Team[]>([]);
   const [players, setPlayers] = useState<Record<number, Player[]>>({});
   const [awards, setAwards] = useState<Record<number, Award[]>>({});
@@ -23,7 +27,7 @@ const ManageTeams = () => {
   const [newTeam, setNewTeam] = useState({
     name: '',
     category: 'Masculino' as CategoryType,
-    modality: 'Futebol' as SportType
+    modality: modalityFilter || 'Futebol' as SportType
   });
 
   const [newAwardTitle, setNewAwardTitle] = useState('');
@@ -53,14 +57,20 @@ const ManageTeams = () => {
     return () => {
       subscription.unsubscribe();
     };
-  }, []);
+  }, [modalityFilter]);
 
   const fetchTeams = async () => {
     try {
-      const { data: teamsData, error: teamsError } = await supabase
+      let query = supabase
         .from('teams')
         .select('*')
         .order('name');
+
+      if (modalityFilter) {
+        query = query.eq('modality', modalityFilter);
+      }
+
+      const { data: teamsData, error: teamsError } = await query;
 
       if (teamsError) throw teamsError;
 
@@ -187,7 +197,7 @@ const ManageTeams = () => {
   const handleUpdatePlayer = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingPlayer || !selectedTeam) return;
-
+  
     try {
       const { error } = await supabase
         .from('players')
@@ -200,10 +210,17 @@ const ManageTeams = () => {
           red_cards: editingPlayer.red_cards
         })
         .eq('id', editingPlayer.id);
-
+  
       if (error) throw error;
-
-      await fetchTeamPlayers(selectedTeam.id);
+  
+      // Atualizar o estado local imediatamente
+      setPlayers(prev => ({
+        ...prev,
+        [selectedTeam.id]: prev[selectedTeam.id].map(player =>
+          player.id === editingPlayer.id ? editingPlayer : player
+        )
+      }));
+  
       setIsEditingPlayer(false);
       setEditingPlayer(null);
       toast.success('Jogador atualizado com sucesso!');
@@ -360,7 +377,9 @@ const ManageTeams = () => {
   return (
     <div className="space-y-4 md:space-y-6">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-3 sm:space-y-0">
-        <h2 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">Gerenciar Times</h2>
+        <h2 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">
+          {modalityFilter ? `Times de ${modalityFilter}` : 'Gerenciar Times'}
+        </h2>
         <button
           onClick={handleAddTeam}
           className="flex items-center justify-center space-x-2 bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 text-white px-3 sm:px-4 py-2 rounded-md transition-colors text-sm sm:text-base w-full sm:w-auto"
