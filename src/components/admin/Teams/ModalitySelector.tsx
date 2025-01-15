@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Modality } from './types';
 import { supabase } from '../../../lib/supabase';
 import { toast } from 'react-toastify';
+import { Volleyball } from 'lucide-react';
 import ManageFutsalTeams from './modalities/Futsal/ManageFutsalTeams';
 import ManageVoleiTeams from './modalities/Volei/ManageVoleiTeams';
 import ManageTeams from './ManageTeams';
@@ -144,13 +145,17 @@ const ModalitySelector = () => {
             className="bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-lg transition-shadow p-6 text-left space-y-4 border border-gray-200 dark:border-gray-700"
           >
             <div className="flex items-center space-x-4">
-              <div className="bg-green-100 dark:bg-green-900 p-3 rounded-full">
-                <img
-                  src={modality.icon}
-                  alt={modality.name}
-                  className="w-6 h-6"
-                />
-              </div>
+                <div className="bg-green-100 dark:bg-green-900 p-3 rounded-full">
+                  {modality.name === 'Volei' ? (
+                    <Volleyball />
+                  ) : (
+                    <img
+                    src={modality.icon}
+                    alt={modality.name}
+                    className="w-6 h-6"
+                    />
+                  )}
+                </div>
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                   {modality.name}
