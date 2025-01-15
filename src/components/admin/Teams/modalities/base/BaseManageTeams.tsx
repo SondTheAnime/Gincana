@@ -231,34 +231,87 @@ export function BaseManageTeams<T extends BaseTeam, P extends BasePlayer>({
 
       if (error) throw error;
 
-      await fetchTeams();
+      // Update local state immediately
+      setTeams(prevTeams =>
+        prevTeams.map(team =>
+          team.id === selectedTeam.id
+            ? {
+                ...team,
+                players: team.players.map(p =>
+                  p.id === editingPlayer.id ? editingPlayer : p
+                )
+              }
+            : team
+        )
+      );
+
+      setSelectedTeam({
+        ...selectedTeam,
+        players: selectedTeam.players.map(p =>
+          p.id === editingPlayer.id ? editingPlayer : p
+        )
+      });
+
       setIsEditingPlayer(false);
       setEditingPlayer(null);
       toast.success('Jogador atualizado com sucesso!');
     } catch (error) {
       console.error('Erro ao atualizar jogador:', error);
       toast.error('Erro ao atualizar jogador. Tente novamente.');
+      // Revert changes if there's an error
+      await fetchTeams();
     }
   };
 
   const handleToggleStarter = async (player: P) => {
     try {
+      const updatedPlayer = { ...player, is_starter: !player.is_starter };
       const { error } = await supabase
         .from('players')
         .update({ is_starter: !player.is_starter })
         .eq('id', player.id);
 
       if (error) throw error;
-      await fetchTeams();
+
+      // Update local state immediately
+      setTeams(prevTeams =>
+        prevTeams.map(team =>
+          team.id === selectedTeam?.id
+            ? {
+                ...team,
+                players: team.players.map(p =>
+                  p.id === player.id ? updatedPlayer : p
+                )
+              }
+            : team
+        )
+      );
+
+      if (selectedTeam) {
+        setSelectedTeam({
+          ...selectedTeam,
+          players: selectedTeam.players.map(p =>
+            p.id === player.id ? updatedPlayer : p
+          )
+        });
+      }
+
       toast.success(`${player.name} ${!player.is_starter ? 'definido como titular' : 'movido para reserva'}`);
     } catch (error) {
       console.error('Erro ao atualizar status do jogador:', error);
       toast.error('Erro ao atualizar status do jogador');
+      // Revert changes if there's an error
+      await fetchTeams();
     }
   };
 
   const handleToggleCaptain = async (player: P) => {
     try {
+      const updatedPlayers = selectedTeam?.players.map(p => ({
+        ...p,
+        is_captain: p.id === player.id ? !p.is_captain : false
+      })) || [];
+
       if (!player.is_captain && selectedTeam) {
         const currentCaptain = selectedTeam.players.find(p => p.is_captain);
         if (currentCaptain) {
@@ -275,11 +328,29 @@ export function BaseManageTeams<T extends BaseTeam, P extends BasePlayer>({
         .eq('id', player.id);
 
       if (error) throw error;
-      await fetchTeams();
+
+      // Update local state immediately
+      setTeams(prevTeams =>
+        prevTeams.map(team =>
+          team.id === selectedTeam?.id
+            ? { ...team, players: updatedPlayers }
+            : team
+        )
+      );
+
+      if (selectedTeam) {
+        setSelectedTeam({
+          ...selectedTeam,
+          players: updatedPlayers
+        });
+      }
+
       toast.success(`${player.name} ${!player.is_captain ? 'definido como capitão' : 'removido da capitania'}`);
     } catch (error) {
       console.error('Erro ao atualizar capitão:', error);
       toast.error('Erro ao atualizar capitão');
+      // Revert changes if there's an error
+      await fetchTeams();
     }
   };
 
@@ -372,10 +443,10 @@ export function BaseManageTeams<T extends BaseTeam, P extends BasePlayer>({
         onSubmitPlayer={handleSubmitPlayer}
         onUpdatePlayer={handleUpdatePlayer}
         onUpdateTeam={handleUpdateTeam}
-        onChangeNewTeam={(field, value) => setNewTeam({ ...newTeam, [field]: value })}
-        onChangeNewPlayer={(field, value) => setNewPlayer({ ...newPlayer, [field]: value })}
-        onChangeEditingPlayer={(field, value) => editingPlayer && setEditingPlayer({ ...editingPlayer, [field]: value })}
-        onChangeEditingTeam={(field, value) => editingTeam && setEditingTeam({ ...editingTeam, [field]: value })}
+        onChangeNewTeam={(field: string, value: any) => setNewTeam({ ...newTeam, [field]: value })}
+        onChangeNewPlayer={(field: string, value: any) => setNewPlayer({ ...newPlayer, [field]: value })}
+        onChangeEditingPlayer={(field: string, value: any) => editingPlayer && setEditingPlayer({ ...editingPlayer, [field]: value })}
+        onChangeEditingTeam={(field: string, value: any) => editingTeam && setEditingTeam({ ...editingTeam, [field]: value })}
         positions={positions}
         formations={formations}
         onDeleteTeam={handleDeleteTeam}

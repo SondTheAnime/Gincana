@@ -1,25 +1,25 @@
 import { Shield, Trophy, Edit, Users } from 'lucide-react';
-import { VoleiTeam } from './types';
+import { BasketballTeam } from './types';
 
-interface VoleiTeamsListProps {
-  teams: VoleiTeam[];
-  selectedTeam: VoleiTeam | null;
-  onSelectTeam: (team: VoleiTeam) => void;
-  onEditTeam: (team: VoleiTeam) => void;
+interface BasketballTeamsListProps {
+  teams: BasketballTeam[];
+  selectedTeam: BasketballTeam | null;
+  onSelectTeam: (team: BasketballTeam) => void;
+  onEditTeam: (team: BasketballTeam) => void;
 }
 
-const VoleiTeamsList = ({
+const BasketballTeamsList = ({
   teams,
   selectedTeam,
   onSelectTeam,
   onEditTeam
-}: VoleiTeamsListProps) => {
+}: BasketballTeamsListProps) => {
   if (teams.length === 0) {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 text-center">
         <Shield className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
         <p className="text-gray-500 dark:text-gray-400">
-          Nenhum time de Vôlei cadastrado
+          Nenhum time de Basquete cadastrado
         </p>
       </div>
     );
@@ -58,7 +58,7 @@ const VoleiTeamsList = ({
                 e.stopPropagation();
                 onEditTeam(team);
               }}
-              className="p-1 text-gray-400 hover:text-green-600 dark:hover:text-green-400"
+              className="p-2 text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors"
               aria-label="Editar time"
             >
               <Edit className="h-5 w-5" />
@@ -91,13 +91,13 @@ const VoleiTeamsList = ({
               <div className="flex items-center space-x-2">
                 <Users className="h-4 w-4 text-gray-400" />
                 <span className="text-gray-500 dark:text-gray-400">
-                  {team.players.filter(p => p.is_starter).length} titulares
+                  {team.players.length} jogadores
                 </span>
               </div>
               <div className="flex items-center space-x-2">
                 <Trophy className="h-4 w-4 text-yellow-500" />
                 <span className="text-gray-500 dark:text-gray-400">
-                  {team.players.reduce((total, player) => total + player.stats.points, 0)} pontos
+                  {team.awards?.length || 0} premios
                 </span>
               </div>
             </div>
@@ -108,4 +108,4 @@ const VoleiTeamsList = ({
   );
 };
 
-export default VoleiTeamsList;
+export default BasketballTeamsList;

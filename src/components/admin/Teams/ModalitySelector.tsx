@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react';
 import { Modality } from './types';
 import { supabase } from '../../../lib/supabase';
 import { toast } from 'react-toastify';
-import { Volleyball } from 'lucide-react';
 import ManageFutsalTeams from './modalities/Futsal/ManageFutsalTeams';
-import ManageVoleiTeams from './modalities/Volei/ManageVoleiTeams';
+import ManageVoleiTeams from './modalities/Volley/ManageVoleiTeams';
+import ManageBasketballTeams from './modalities/Basketball/ManageBasketballTeams';
 import ManageTeams from './ManageTeams';
 
 const ModalitySelector = () => {
@@ -104,6 +104,31 @@ const ModalitySelector = () => {
             <ManageVoleiTeams />
           </div>
         );
+      case 'Basquete':
+        return (
+          <div>
+            <button
+              onClick={handleBack}
+              className="mb-4 flex items-center space-x-2 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
+            >
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15 19l-7-7 7-7"
+                />
+              </svg>
+              <span>Voltar para Modalidades</span>
+            </button>
+            <ManageBasketballTeams />
+          </div>
+        );
       default:
         return (
           <div>
@@ -146,13 +171,35 @@ const ModalitySelector = () => {
           >
             <div className="flex items-center space-x-4">
                 <div className="bg-green-100 dark:bg-green-900 p-3 rounded-full">
-                  {modality.name === 'Volei' ? (
-                    <Volleyball />
+                  {modality.name === 'Futsal' ? (
+                    <img
+                      src="/src/assets/icons/futsal.png"
+                      alt="Futsal"
+                      className="w-6 h-6"
+                    />
+                  ) : modality.name === 'Volei' ? (
+                    <img
+                      src="/src/assets/icons/volleyball.svg"
+                      alt="Volei"
+                      className="w-6 h-6"
+                    />
+                  ) : modality.name === 'Xadrez' ? (
+                    <img
+                      src="/src/assets/icons/chess.png"
+                      alt="Xadrez"
+                      className="w-6 h-6"
+                    />
+                  ) : modality.name === 'Basquete' ? (
+                    <img
+                      src="/src/assets/icons/basket.png"
+                      alt="Basquete"
+                      className="w-6 h-6"
+                    />
                   ) : (
                     <img
-                    src={modality.icon}
-                    alt={modality.name}
-                    className="w-6 h-6"
+                      src={modality.icon}
+                      alt={modality.name}
+                      className="w-6 h-6"
                     />
                   )}
                 </div>
