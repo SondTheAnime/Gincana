@@ -9,37 +9,44 @@ Um sistema web moderno para gerenciamento de competições esportivas, desenvolv
 - Calendário de próximos jogos
 - Consulta de resultados anteriores
 - Interface responsiva e amigável
-- Acompanhamento de estatísticas dos jogadores
-- Visualização de eventos do jogo em tempo real (gols, cartões, substituições)
+- Sistema de inscrição para times e jogadores
+- Tema claro/escuro
 
 ### Área Administrativa
 - Gerenciamento completo de times e jogadores
 - Controle de placar em tempo real
 - Gestão do calendário de jogos
-- Sistema de eventos de jogo (gols, cartões, substituições)
-- Controle de premiações
-- Gestão de estatísticas dos jogadores:
-  - Gols marcados
-  - Cartões amarelos
-  - Cartões vermelhos
+- Gerenciamento de modalidades esportivas
+- Controle de inscrições de times e jogadores
+- Painel administrativo completo
 
 ## 🛠️ Tecnologias Utilizadas
 
-- **React** - Biblioteca para construção de interfaces
+- **React 18** - Biblioteca para construção de interfaces
 - **TypeScript** - Superset JavaScript com tipagem estática
 - **Vite** - Build tool e dev server
 - **Tailwind CSS** - Framework CSS utilitário
 - **Framer Motion** - Biblioteca de animações
 - **Lucide React** - Ícones modernos
 - **Supabase** - Backend as a Service para banco de dados e autenticação
+- **React Router DOM** - Roteamento da aplicação
+- **Sonner** - Notificações modernas
+- **Zod** - Validação de esquemas
+- **HeadlessUI** - Componentes acessíveis sem estilo
 
-## 📦 Modalidades Suportadas
+## 📦 Estrutura do Projeto
 
-- Futsal
-- Vôlei
-- Basquete
-- Handebol
-- Outras modalidades podem ser adicionadas dinamicamente
+```
+src/
+├── assets/      # Recursos estáticos
+├── components/  # Componentes React
+│   ├── admin/   # Componentes da área administrativa
+│   └── home/    # Componentes da área pública
+├── contexts/    # Contextos React (ex: Tema)
+├── lib/         # Bibliotecas e configurações
+├── pages/       # Páginas da aplicação
+└── routes/      # Configuração de rotas
+```
 
 ## 🚀 Como Executar
 
@@ -53,7 +60,7 @@ git clone [url-do-repositorio]
 npm install
 ```
 
-3. Configure as variáveis de ambiente
+3. Configure as variáveis de ambiente (.env)
 ```bash
 VITE_SUPABASE_URL=sua_url_do_supabase
 VITE_SUPABASE_ANON_KEY=sua_chave_anonima_do_supabase
@@ -69,80 +76,68 @@ npm run dev
 npm run build
 ```
 
-## 🔒 Autenticação
+## 🔒 Autenticação e Rotas
 
-O sistema possui uma área administrativa protegida com autenticação para gerenciamento das competições.
+O sistema possui rotas protegidas para a área administrativa:
+- `/admin` - Login administrativo
+- `/admin/dashboard` - Painel de controle
+- `/jogos` - Visualização de jogos ao vivo
+- `/calendario` - Calendário de jogos
+- `/inscricao` - Sistema de inscrições
+  - `/inscricao/time` - Inscrição de times
+  - `/inscricao/jogador` - Inscrição de jogadores
 
-## 🎮 Funcionalidades do Placar
+## 🎮 Funcionalidades do Painel Administrativo
 
-- Controle de tempo de jogo com cronômetro integrado
-- Marcação de eventos:
-  - Gols (atualiza automaticamente o placar e estatísticas do jogador)
-  - Cartões amarelos (atualiza estatísticas do jogador)
-  - Cartões vermelhos (atualiza estatísticas do jogador)
-  - Substituições
-- Atualização em tempo real usando Supabase Realtime
-- Gestão de períodos de jogo
-- Registro de jogadores e estatísticas
-- Histórico de eventos do jogo
+- Adicionar novos jogos
+- Gerenciar calendário de competições
+- Atualizar placares em tempo real
+- Gerenciar times e jogadores
+- Administrar modalidades esportivas
+- Controlar solicitações de inscrição
+- Configurar períodos de inscrição
 
-## 👥 Gestão de Times
+## 👥 Gestão de Times e Jogadores
 
-- Cadastro e edição de times
-- Gerenciamento de jogadores:
-  - Informações básicas (nome, número)
-  - Foto do jogador
-  - Estatísticas individuais:
-    - Gols marcados
-    - Cartões amarelos
-    - Cartões vermelhos
-- Controle de cartões e suspensões
-- Registro de premiações
-- Histórico de partidas
+- Cadastro e gerenciamento de times
+- Controle de jogadores por modalidade
+- Aprovação de inscrições
+- Gerenciamento de modalidades específicas:
+  - Futsal
+  - Vôlei
+  - Tênis de Mesa
+  - Outras modalidades configuráveis
 
-## 📅 Gestão de Calendário
+## 🎨 Temas e Responsividade
 
-- Agendamento de jogos
-- Definição de locais
-- Categorias:
-  - Masculino
-  - Feminino
-  - Misto
-- Controle de modalidades
-- Visualização por mês
-- Status dos jogos:
-  - Agendado
-  - Em andamento
-  - Finalizado
-  - Cancelado
+- Suporte a tema claro e escuro
+- Design responsivo para todas as telas
+- Interface moderna e intuitiva
+- Componentes acessíveis
+- Animações suaves com Framer Motion
 
-## 🎨 Temas
+## 🔄 Atualizações em Tempo Real
 
-O sistema suporta tema claro e escuro, adaptando-se automaticamente às preferências do usuário.
+- Placar dos jogos
+- Status das partidas
+- Notificações de eventos
+- Atualizações do calendário
 
-## 📱 Responsividade
+## 📱 Compatibilidade
 
 Interface totalmente responsiva, funcionando em:
 - Desktops
 - Tablets
 - Smartphones
 
-## 🤝 Atualizações em Tempo Real
-
-- Placar dos jogos
-- Eventos (gols, cartões, substituições)
-- Estatísticas dos jogadores
-- Status dos jogos
-- Calendário de partidas
-
 ## 🤝 Contribuição
 
 Para contribuir com o projeto:
 
 1. Faça um fork do repositório
-2. Crie uma branch para sua feature (`git checkout -b feature/AmazingFeature`)
-3. Commit suas mudanças (`git commit -m 'Add some AmazingFeature'`)
-4. Push para a branch (`git push origin feature/AmazingFeature`)
+2. Crie uma branch para sua feature (`git checkout -b feature/NovaFuncionalidade`)
+3. Commit suas mudanças (`git commit -m 'Adiciona nova funcionalidade'`)
+4. Push para a branch (`git push origin feature/NovaFuncionalidade`)
 5. Abra um Pull Request
 
 ## 📄 Licença
@@ -152,3 +147,4 @@ Este projeto está sob a licença MIT. Veja o arquivo `LICENSE` para mais detalh
 ## 🏗️ Desenvolvido por
 
 Mim
+
