@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Check, X, ChevronDown, ChevronUp, Loader2 } from 'lucide-react'
+import { Check, X, ChevronDown, ChevronUp, Loader2, Trash2 } from 'lucide-react'
 import { supabase } from '../../../lib/supabase'
 import { toast } from 'sonner'
 
@@ -150,12 +150,28 @@ const InscricaoRequests = () => {
           console.error('Erro ao criar time:', createError)
           throw createError
         }
+      }
 
-        // Atualizar status da solicitação
+      if (action === 'rejeitar') {
+        // Se for rejeitar, deletar a solicitação
+        const { error: deleteError } = await supabase
+          .from('team_requests')
+          .delete()
+          .eq('id', id)
+
+        if (deleteError) {
+          console.error('Erro ao deletar solicitação:', deleteError)
+          throw deleteError
+        }
+
+        // Atualizar estado local
+        setTimeRequests(prev => prev.filter(request => request.id !== id))
+      } else {
+        // Se for aprovar, atualizar o status
         const { error: updateError } = await supabase
           .from('team_requests')
           .update({ 
-            status: action === 'aprovar' ? 'aprovado' : 'rejeitado',
+            status: 'aprovado',
             updated_at: new Date().toISOString()
           })
           .eq('id', id)
@@ -167,13 +183,17 @@ const InscricaoRequests = () => {
       }
 
       // Atualizar estado local
-      setTimeRequests(prev =>
-        prev.map(request =>
-          request.id === id
-            ? { ...request, status: action === 'aprovar' ? 'aprovado' : 'rejeitado' }
-            : request
+      if (action === 'rejeitar') {
+        setTimeRequests(prev => prev.filter(request => request.id !== id))
+      } else {
+        setTimeRequests(prev =>
+          prev.map(request =>
+            request.id === id
+              ? { ...request, status: 'aprovado' }
+              : request
+          )
         )
-      )
+      }
 
       toast.success(
         action === 'aprovar' 
@@ -228,7 +248,7 @@ const InscricaoRequests = () => {
         const { error: updateError } = await supabase
           .from('player_requests')
           .update({ 
-            status: action === 'aprovar' ? 'aprovado' : 'rejeitado',
+            status: 'aprovado',
             updated_at: new Date().toISOString()
           })
           .eq('id', id)
@@ -237,16 +257,31 @@ const InscricaoRequests = () => {
           console.error('Erro ao atualizar solicitação:', updateError)
           throw updateError
         }
+      } else {
+        // Se for rejeitar, deletar a solicitação
+        const { error: deleteError } = await supabase
+          .from('player_requests')
+          .delete()
+          .eq('id', id)
+
+        if (deleteError) {
+          console.error('Erro ao deletar solicitação:', deleteError)
+          throw deleteError
+        }
       }
 
       // Atualizar estado local
-      setJogadorRequests(prev =>
-        prev.map(request =>
-          request.id === id
-            ? { ...request, status: action === 'aprovar' ? 'aprovado' : 'rejeitado' }
-            : request
+      if (action === 'rejeitar') {
+        setJogadorRequests(prev => prev.filter(request => request.id !== id))
+      } else {
+        setJogadorRequests(prev =>
+          prev.map(request =>
+            request.id === id
+              ? { ...request, status: 'aprovado' }
+              : request
+          )
         )
-      )
+      }
 
       toast.success(
         action === 'aprovar' 
@@ -256,6 +291,48 @@ const InscricaoRequests = () => {
     } catch (error) {
       console.error('Erro ao processar solicitação:', error)
       toast.error('Erro ao processar solicitação. Tente novamente.')
+    } finally {
+      setLoadingAction(null)
+    }
+  }
+
+  const handleDeleteTimeRequest = async (id: string) => {
+    try {
+      setLoadingAction(id)
+      
+      const { error } = await supabase
+        .from('team_requests')
+        .delete()
+        .eq('id', id)
+
+      if (error) throw error
+
+      setTimeRequests(prev => prev.filter(request => request.id !== id))
+      toast.success('Solicitação excluída com sucesso!')
+    } catch (error) {
+      console.error('Erro ao excluir solicitação:', error)
+      toast.error('Erro ao excluir solicitação')
+    } finally {
+      setLoadingAction(null)
+    }
+  }
+
+  const handleDeleteJogadorRequest = async (id: string) => {
+    try {
+      setLoadingAction(id)
+      
+      const { error } = await supabase
+        .from('player_requests')
+        .delete()
+        .eq('id', id)
+
+      if (error) throw error
+
+      setJogadorRequests(prev => prev.filter(request => request.id !== id))
+      toast.success('Solicitação excluída com sucesso!')
+    } catch (error) {
+      console.error('Erro ao excluir solicitação:', error)
+      toast.error('Erro ao excluir solicitação')
     } finally {
       setLoadingAction(null)
     }
@@ -355,6 +432,23 @@ const InscricaoRequests = () => {
                           </button>
                         </>
                       )}
+                      <button
+                        onClick={e => {
+                          e.stopPropagation()
+                          if (window.confirm('Tem certeza que deseja excluir esta solicitação?')) {
+                            handleDeleteTimeRequest(request.id)
+                          }
+                        }}
+                        disabled={loadingAction === request.id}
+                        className={`
+                          p-1 rounded-full text-gray-600 
+                          hover:bg-gray-100 dark:hover:bg-gray-700
+                          disabled:opacity-50 disabled:cursor-not-allowed
+                        `}
+                        title="Excluir solicitação"
+                      >
+                        <Trash2 className="h-5 w-5" />
+                      </button>
                       {expandedTime === request.id ? (
                         <ChevronUp className="h-5 w-5 text-gray-400" />
                       ) : (
@@ -458,7 +552,12 @@ const InscricaoRequests = () => {
                               e.stopPropagation()
                               handleJogadorAction(request.id, 'aprovar')
                             }}
-                            className="p-1 rounded-full text-green-600 hover:bg-green-100 dark:hover:bg-green-900"
+                            disabled={loadingAction === request.id}
+                            className={`
+                              p-1 rounded-full text-green-600 
+                              hover:bg-green-100 dark:hover:bg-green-900
+                              disabled:opacity-50 disabled:cursor-not-allowed
+                            `}
                           >
                             <Check className="h-5 w-5" />
                           </button>
@@ -467,12 +566,34 @@ const InscricaoRequests = () => {
                               e.stopPropagation()
                               handleJogadorAction(request.id, 'rejeitar')
                             }}
-                            className="p-1 rounded-full text-red-600 hover:bg-red-100 dark:hover:bg-red-900"
+                            disabled={loadingAction === request.id}
+                            className={`
+                              p-1 rounded-full text-red-600 
+                              hover:bg-red-100 dark:hover:bg-red-900
+                              disabled:opacity-50 disabled:cursor-not-allowed
+                            `}
                           >
                             <X className="h-5 w-5" />
                           </button>
                         </>
                       )}
+                      <button
+                        onClick={e => {
+                          e.stopPropagation()
+                          if (window.confirm('Tem certeza que deseja excluir esta solicitação?')) {
+                            handleDeleteJogadorRequest(request.id)
+                          }
+                        }}
+                        disabled={loadingAction === request.id}
+                        className={`
+                          p-1 rounded-full text-gray-600 
+                          hover:bg-gray-100 dark:hover:bg-gray-700
+                          disabled:opacity-50 disabled:cursor-not-allowed
+                        `}
+                        title="Excluir solicitação"
+                      >
+                        <Trash2 className="h-5 w-5" />
+                      </button>
                       {expandedJogador === request.id ? (
                         <ChevronUp className="h-5 w-5 text-gray-400" />
                       ) : (

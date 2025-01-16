@@ -14,6 +14,7 @@ const ManageVoleiTeams = () => {
   // Estados similares ao ManageFutsalTeams
   const [teams, setTeams] = useState<VoleiTeam[]>([]);
   const [selectedTeam, setSelectedTeam] = useState<VoleiTeam | null>(null);
+  const [players, setPlayers] = useState<VoleiPlayer[]>([]);
   const [isAddingTeam, setIsAddingTeam] = useState(false);
   const [isAddingPlayer, setIsAddingPlayer] = useState(false);
   const [isEditingPlayer, setIsEditingPlayer] = useState(false);
@@ -79,6 +80,12 @@ const ManageVoleiTeams = () => {
       supabase.removeChannel(playersChannel);
     };
   }, []);
+
+  useEffect(() => {
+    if (selectedTeam) {
+      setPlayers(selectedTeam.players);
+    }
+  }, [selectedTeam]);
 
   const fetchTeams = async () => {
     try {
@@ -216,13 +223,19 @@ const ManageVoleiTeams = () => {
 
       if (error) throw error;
 
+      const newPlayerData = data as VoleiPlayer;
+
+      // Atualizar o estado teams
       setTeams(prevTeams => 
         prevTeams.map(team => 
           team.id === selectedTeam.id 
-            ? { ...team, players: [...team.players, data as VoleiPlayer] }
+            ? { ...team, players: [...team.players, newPlayerData] }
             : team
         )
       );
+
+      // Atualizar o estado players
+      setPlayers(prevPlayers => [...prevPlayers, newPlayerData]);
 
       setNewPlayer({
         name: '',
@@ -292,6 +305,13 @@ const ManageVoleiTeams = () => {
       
       setTeams(updatedTeams);
       
+      // Atualizar o estado players
+      setPlayers(prevPlayers => 
+        prevPlayers.map(p => 
+          p.id === editingPlayer.id ? { ...editingPlayer, stats } : p
+        )
+      );
+      
       if (selectedTeam) {
         const updatedSelectedTeam = updatedTeams.find(t => t.id === selectedTeam.id);
         if (updatedSelectedTeam) {
@@ -331,6 +351,15 @@ const ManageVoleiTeams = () => {
       );
 
       setTeams(updatedTeams);
+      
+      // Atualizar o estado players
+      setPlayers(prevPlayers =>
+        prevPlayers.map(p =>
+          p.id === player.id
+            ? { ...p, is_starter: !p.is_starter }
+            : p
+        )
+      );
       
       if (selectedTeam && selectedTeam.id === player.team_id) {
         setSelectedTeam(updatedTeams.find(team => team.id === player.team_id) || null);
@@ -376,6 +405,15 @@ const ManageVoleiTeams = () => {
       );
 
       setTeams(updatedTeams);
+      
+      // Atualizar o estado players
+      setPlayers(prevPlayers =>
+        prevPlayers.map(p =>
+          p.id === player.id
+            ? { ...p, is_captain: !p.is_captain }
+            : { ...p, is_captain: false }
+        )
+      );
       
       if (selectedTeam && selectedTeam.id === player.team_id) {
         setSelectedTeam(updatedTeams.find(team => team.id === player.team_id) || null);
@@ -454,6 +492,8 @@ const ManageVoleiTeams = () => {
           onEditPlayer={handleEditPlayer}
           onToggleStarter={handleToggleStarter}
           onToggleCaptain={handleToggleCaptain}
+          players={players}
+          setPlayers={setPlayers}
         />
       </div>
 

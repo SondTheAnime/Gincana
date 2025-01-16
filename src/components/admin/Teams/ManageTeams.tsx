@@ -304,67 +304,63 @@ const ManageTeams = ({ modalityFilter }: ManageTeamsProps) => {
     }
   };
 
-  const handleToggleStarter = async (player: Player) => {
+  const handleToggleStarter = async (playerId: number) => {
     try {
+      const player = players.find(p => p.id === playerId)
+      if (!player) return
+
       const { error } = await supabase
         .from('players')
         .update({ is_starter: !player.is_starter })
-        .eq('id', player.id);
+        .eq('id', playerId)
 
-      if (error) throw error;
+      if (error) throw error
 
-      // Atualizar o estado local
-      setPlayers(prev => ({
-        ...prev,
-        [player.team_id]: prev[player.team_id].map(p => 
-          p.id === player.id ? { ...p, is_starter: !p.is_starter } : p
+      setPlayers(prev =>
+        prev.map(p =>
+          p.id === playerId ? { ...p, is_starter: !p.is_starter } : p
         )
-      }));
+      )
 
-      toast.success(`${player.name} ${!player.is_starter ? 'definido como titular' : 'movido para reserva'}`);
+      toast.success(
+        player.is_starter
+          ? 'Jogador removido do time titular'
+          : 'Jogador adicionado ao time titular'
+      )
     } catch (error) {
-      console.error('Erro ao atualizar status do jogador:', error);
-      toast.error('Erro ao atualizar status do jogador');
+      console.error('Erro ao alterar titular:', error)
+      toast.error('Erro ao alterar titular')
     }
-  };
+  }
 
-  const handleToggleCaptain = async (player: Player) => {
+  const handleToggleCaptain = async (playerId: number) => {
     try {
-      // Primeiro, remove o capitão atual do time (se houver)
-      if (!player.is_captain) {
-        const currentCaptain = players[player.team_id]?.find(p => p.is_captain);
-        if (currentCaptain) {
-          await supabase
-            .from('players')
-            .update({ is_captain: false })
-            .eq('id', currentCaptain.id);
-        }
-      }
+      const player = players.find(p => p.id === playerId)
+      if (!player) return
 
-      // Atualiza o status do jogador selecionado
       const { error } = await supabase
         .from('players')
         .update({ is_captain: !player.is_captain })
-        .eq('id', player.id);
+        .eq('id', playerId)
 
-      if (error) throw error;
+      if (error) throw error
 
-      // Atualizar o estado local
-      setPlayers(prev => ({
-        ...prev,
-        [player.team_id]: prev[player.team_id].map(p => 
-          p.id === player.id 
-            ? { ...p, is_captain: !p.is_captain }
-            : { ...p, is_captain: false }
+      setPlayers(prev =>
+        prev.map(p =>
+          p.id === playerId ? { ...p, is_captain: !p.is_captain } : p
         )
-      }));
+      )
 
-      toast.success(`${player.name} ${!player.is_captain ? 'definido como capitão' : 'removido da capitania'}`);
+      toast.success(
+        player.is_captain
+          ? 'Jogador removido da capitania'
+          : 'Jogador definido como capitão'
+      )
     } catch (error) {
-      console.error('Erro ao atualizar capitão:', error);
-      toast.error('Erro ao atualizar capitão');
+      console.error('Erro ao alterar capitão:', error)
+      toast.error('Erro ao alterar capitão')
     }
-  };
+  }
 
   if (loading) {
     return (
@@ -398,14 +394,23 @@ const ManageTeams = ({ modalityFilter }: ManageTeamsProps) => {
           awards={awards}
         />
         
-        <TeamDetails
-          selectedTeam={selectedTeam}
-          players={selectedTeam ? players[selectedTeam.id] || [] : []}
-          onAddPlayer={handleAddPlayer}
-          onEditPlayer={handleEditPlayer}
-          onToggleStarter={handleToggleStarter}
-          onToggleCaptain={handleToggleCaptain}
-        />
+        <div className="lg:col-span-2">
+          {selectedTeam ? (
+            <TeamDetails
+              team={selectedTeam}
+              players={players}
+              setPlayers={setPlayers}
+              onToggleCaptain={handleToggleCaptain}
+              onToggleStarter={handleToggleStarter}
+            />
+          ) : (
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 flex items-center justify-center">
+              <p className="text-gray-500 dark:text-gray-400">
+                Selecione um time para ver os detalhes
+              </p>
+            </div>
+          )}
+        </div>
       </div>
 
       <TeamModals

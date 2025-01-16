@@ -1,7 +1,9 @@
-import { Shield, UserPlus, User, Edit, Star } from 'lucide-react';
+import { Shield, UserPlus, User, Edit, Star, Trash2, Loader2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { FutsalTeam, FutsalPlayer } from '../../types';
 import PlayerStatsModal from './PlayerStatsModal';
+import { supabase } from '../../../../../lib/supabase';
+import { toast } from 'sonner';
 
 interface FutsalTeamDetailsProps {
   selectedTeam: FutsalTeam | null;
@@ -9,6 +11,8 @@ interface FutsalTeamDetailsProps {
   onEditPlayer: (player: FutsalPlayer) => void;
   onToggleStarter: (player: FutsalPlayer) => void;
   onToggleCaptain: (player: FutsalPlayer) => void;
+  players: FutsalPlayer[];
+  setPlayers: (players: FutsalPlayer[]) => void;
 }
 
 const FutsalTeamDetails = ({
@@ -16,9 +20,12 @@ const FutsalTeamDetails = ({
   onAddPlayer,
   onEditPlayer,
   onToggleStarter,
-  onToggleCaptain
+  onToggleCaptain,
+  players,
+  setPlayers,
 }: FutsalTeamDetailsProps) => {
   const [selectedPlayer, setSelectedPlayer] = useState<FutsalPlayer | null>(null);
+  const [loadingAction, setLoadingAction] = useState<string | null>(null);
 
   // Adicionar este useEffect para atualizar o selectedPlayer quando o time ou jogadores mudarem
   useEffect(() => {
@@ -27,6 +34,32 @@ const FutsalTeamDetails = ({
       setSelectedPlayer(updatedPlayer || null);
     }
   }, [selectedTeam, selectedTeam?.players]);
+
+  const handleDeletePlayer = async (playerId: number) => {
+    if (!window.confirm('Tem certeza que deseja excluir este jogador?')) {
+      return;
+    }
+
+    try {
+      setLoadingAction(playerId.toString());
+
+      const { error } = await supabase
+        .from('players')
+        .delete()
+        .eq('id', playerId);
+
+      if (error) throw error;
+
+      // Atualizar a lista de jogadores localmente
+      setPlayers(players.filter(player => player.id !== playerId));
+      toast.success('Jogador excluído com sucesso!');
+    } catch (error) {
+      console.error('Erro ao excluir jogador:', error);
+      toast.error('Erro ao excluir jogador');
+    } finally {
+      setLoadingAction(null);
+    }
+  };
 
   if (!selectedTeam) {
     return (
@@ -122,6 +155,22 @@ const FutsalTeamDetails = ({
             aria-label="Editar jogador"
           >
             <Edit className="h-4 w-4" />
+          </button>
+          <button
+            onClick={() => handleDeletePlayer(player.id)}
+            disabled={loadingAction === player.id.toString()}
+            className={`
+              p-1 rounded-full text-red-600 
+              hover:bg-red-100 dark:hover:bg-red-900
+              disabled:opacity-50 disabled:cursor-not-allowed
+            `}
+            title="Excluir jogador"
+          >
+            {loadingAction === player.id.toString() ? (
+              <Loader2 className="h-5 w-5 animate-spin" />
+            ) : (
+              <Trash2 className="h-5 w-5" />
+            )}
           </button>
         </div>
       </div>

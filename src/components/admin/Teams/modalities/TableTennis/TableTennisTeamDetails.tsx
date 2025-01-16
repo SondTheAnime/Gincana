@@ -1,7 +1,9 @@
 import { TableTennisTeam, TableTennisPlayer } from './types';
-import { Crown, Star, UserPlus, Table2, Shield } from 'lucide-react';
+import { Crown, Star, UserPlus, Table2, Shield, Trash2, Loader2 } from 'lucide-react';
 import PlayerStatsModal from './PlayerStatsModal';
 import { useState } from 'react';
+import { supabase } from '../../../../../lib/supabase';
+import { toast } from 'sonner';
 
 interface TableTennisTeamDetailsProps {
   selectedTeam: TableTennisTeam | null;
@@ -9,6 +11,8 @@ interface TableTennisTeamDetailsProps {
   onEditPlayer: (player: TableTennisPlayer) => void;
   onToggleStarter: (player: TableTennisPlayer) => void;
   onToggleCaptain: (player: TableTennisPlayer) => void;
+  players: TableTennisPlayer[];
+  setPlayers: (players: TableTennisPlayer[]) => void;
 }
 
 const TableTennisTeamDetails = ({
@@ -17,11 +21,14 @@ const TableTennisTeamDetails = ({
   onEditPlayer,
   onToggleStarter,
   onToggleCaptain,
+  players,
+  setPlayers,
 }: TableTennisTeamDetailsProps) => {
   const [selectedPlayer, setSelectedPlayer] = useState<TableTennisPlayer | null>(
     null
   );
   const [showStatsModal, setShowStatsModal] = useState(false);
+  const [loadingAction, setLoadingAction] = useState<string | null>(null);
 
   const getWinRate = (player: TableTennisPlayer) => {
     const { matches_won, matches_played } = player.stats;
@@ -34,6 +41,32 @@ const TableTennisTeamDetails = ({
     if (!matches_played) return 0;
     return (points_won / matches_played).toFixed(1);
   };
+
+  const handleDeletePlayer = async (playerId: number) => {
+    if (!window.confirm('Tem certeza que deseja excluir este jogador?')) {
+      return
+    }
+
+    try {
+      setLoadingAction(playerId.toString())
+
+      const { error } = await supabase
+        .from('players')
+        .delete()
+        .eq('id', playerId)
+
+      if (error) throw error
+
+      // Atualizar a lista de jogadores localmente
+      setPlayers(players.filter(player => player.id !== playerId))
+      toast.success('Jogador excluído com sucesso!')
+    } catch (error) {
+      console.error('Erro ao excluir jogador:', error)
+      toast.error('Erro ao excluir jogador')
+    } finally {
+      setLoadingAction(null)
+    }
+  }
 
   if (!selectedTeam) {
     return (
@@ -50,113 +83,6 @@ const TableTennisTeamDetails = ({
       </div>
     );
   }
-
-  // const renderPlayerCard = (player: TableTennisPlayer) => (
-  //   <div
-  //     key={player.id}
-  //     className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
-  //     onClick={() => setSelectedPlayer(player)}
-  //   >
-  //     <div className="flex items-center justify-between">
-  //       <div className="flex items-center space-x-3">
-  //         <div className="bg-green-100 dark:bg-green-800 h-12 w-12 rounded-full flex items-center justify-center overflow-hidden relative">
-  //           {player.photo ? (
-  //             <img 
-  //               src={player.photo} 
-  //               alt={player.name}
-  //               className="h-full w-full object-cover"
-  //             />
-  //           ) : (
-  //             <User className="h-6 w-6 text-green-600 dark:text-green-400" />
-  //           )}
-  //           {player.is_captain && (
-  //             <div className="absolute -top-1 -right-1 bg-yellow-400 rounded-full p-1">
-  //               <Star className="h-3 w-3 text-white" />
-  //             </div>
-  //           )}
-  //         </div>
-  //         <div>
-  //           <p className="font-medium text-gray-900 dark:text-white flex items-center space-x-2">
-  //             <span>{player.name}</span>
-  //             {player.is_captain && (
-  //               <span className="text-xs text-yellow-600 dark:text-yellow-400">(Capitão)</span>
-  //             )}
-  //           </p>
-  //           <div className="text-sm text-gray-500 dark:text-gray-400">
-  //             <div className="flex items-center space-x-2">
-  //               <span>#{player.number}</span>
-  //               <span>•</span>
-  //               <span>{player.position}</span>
-  //             </div>
-  //           </div>
-  //         </div>
-  //       </div>
-
-  //       <div className="flex items-center space-x-2">
-  //         <button 
-  //           onClick={(e) => {
-  //             e.stopPropagation();
-  //             onToggleStarter(player);
-  //           }}
-  //           className={`px-2 py-1 text-xs rounded-md transition-colors ${
-  //             player.is_starter
-  //               ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
-  //               : 'bg-gray-100 text-gray-700 dark:bg-gray-600 dark:text-gray-300'
-  //           }`}
-  //         >
-  //           {player.is_starter ? 'Titular' : 'Reserva'}
-  //         </button>
-          
-  //         <button 
-  //           onClick={(e) => {
-  //             e.stopPropagation();
-  //             onToggleCaptain(player);
-  //           }}
-  //           className={`p-1 rounded-md transition-colors ${
-  //             player.is_captain
-  //               ? 'text-yellow-600 bg-yellow-100 dark:bg-yellow-900 dark:text-yellow-400'
-  //               : 'text-gray-400 hover:text-yellow-600 dark:hover:text-yellow-400'
-  //           }`}
-  //           aria-label={player.is_captain ? 'Remover Capitão' : 'Definir como Capitão'}
-  //         >
-  //           <Star className="h-4 w-4" />
-  //         </button>
-          
-  //         <button 
-  //           onClick={(e) => {
-  //             e.stopPropagation();
-  //             onEditPlayer(player);
-  //           }}
-  //           className="p-1 text-gray-400 hover:text-green-600 dark:hover:text-green-400"
-  //           aria-label="Editar jogador"
-  //         >
-  //           <Edit className="h-4 w-4" />
-  //         </button>
-  //       </div>
-  //     </div>
-
-  //     <div className="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
-  //       <div>
-  //         <div className="text-gray-500 dark:text-gray-400">Vitorias</div>
-  //         <div className="font-medium text-gray-900 dark:text-white">
-  //           {player.stats.matches_won}
-  //         </div>
-  //       </div>
-  //       <div>
-  //         <div className="text-gray-500 dark:text-gray-400">Derrotas</div>
-  //         <div className="font-medium text-gray-900 dark:text-white">
-  //           {player.stats.matches_lost}
-  //         </div>
-  //       </div>
-  //       <div>
-  //         <div className="text-gray-500 dark:text-gray-400">Pontos</div>
-  //         <div className="font-medium text-gray-900 dark:text-white">
-  //           {player.stats.points_won}
-  //         </div>
-  //       </div>
-  //     </div>
-  //   </div>
-  // );
 
   return (
     <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
@@ -204,8 +130,8 @@ const TableTennisTeamDetails = ({
           </div>
        </div>
 
-      <div className="grid grid-cols-1 gap-1 sm:grid-cols-2 lg:grid-cols-2">
-        {selectedTeam.players.map((player) => (
+      <div className="grid grid-cols-1 gap-1 sm:grid-cols-2 lg:grid-cols-1">
+        {players?.map((player) => (
           <div
             key={player.id}
             className="relative flex flex-col overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800"
@@ -302,6 +228,22 @@ const TableTennisTeamDetails = ({
                   className="inline-flex items-center rounded-md bg-blue-100 px-2 py-1 text-sm font-medium text-blue-700 hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-200 dark:hover:bg-blue-800"
                 >
                   Editar
+                </button>
+                <button
+                  onClick={() => handleDeletePlayer(player.id)}
+                  disabled={loadingAction === player.id.toString()}
+                  className={`
+                    p-1 rounded-full text-red-600 
+                    hover:bg-red-100 dark:hover:bg-red-900
+                    disabled:opacity-50 disabled:cursor-not-allowed
+                  `}
+                  title="Excluir jogador"
+                >
+                  {loadingAction === player.id.toString() ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-5 w-5" />
+                  )}
                 </button>
               </div>
             </div>

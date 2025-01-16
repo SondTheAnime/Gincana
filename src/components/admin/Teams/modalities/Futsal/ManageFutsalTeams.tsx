@@ -467,6 +467,19 @@ const ManageFutsalTeams = () => {
           onEditPlayer={handleEditPlayer}
           onToggleStarter={handleToggleStarter}
           onToggleCaptain={handleToggleCaptain}
+          players={selectedTeam?.players || []}
+          setPlayers={(newPlayers) => {
+            if (selectedTeam) {
+              setTeams(prevTeams =>
+                prevTeams.map(team =>
+                  team.id === selectedTeam.id
+                    ? { ...team, players: newPlayers }
+                    : team
+                )
+              );
+              setSelectedTeam({ ...selectedTeam, players: newPlayers });
+            }
+          }}
         />
       </div>
 

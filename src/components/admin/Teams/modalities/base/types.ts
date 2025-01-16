@@ -46,6 +46,8 @@ export interface BaseTeamDetailsProps<T, P> {
   onEditPlayer: (player: P) => void;
   onToggleStarter: (player: P) => void;
   onToggleCaptain: (player: P) => void;
+  players: P[];
+  setPlayers: (players: P[]) => void;
 }
 
 // Interface base para modais

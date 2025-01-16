@@ -22,9 +22,9 @@ const formSchema = z.object({
   genero: z.string().refine(val => ['Masculino', 'Feminino'].includes(val), 'Gênero inválido'),
   numeroCamisa: z.string().min(1, 'Número da camisa é obrigatório'),
   posicao: z.string().optional(),
-  empunhadura: z.string().optional(),
-  estiloJogo: z.string().optional(),
-  lateralidade: z.string().optional(),
+  empunhadura: z.string().refine(val => !val || ['Clássica', 'Caneta', 'Híbrido'].includes(val), 'Empunhadura inválida'),
+  estiloJogo: z.string().refine(val => !val || ['Ofensivo', 'Defensivo', 'All-Around'].includes(val), 'Estilo de jogo inválido'),
+  lateralidade: z.string().refine(val => !val || ['Destro', 'Canhoto', 'Ambidestro'].includes(val), 'Lateralidade inválida'),
   telefone: z.string().min(10, 'Telefone inválido'),
 })
 
@@ -50,10 +50,10 @@ const InscricaoJogador = () => {
   })
   const [showSuccess, setShowSuccess] = useState(false)
 
-  // Buscar times quando a modalidade ou turma mudar
+  // Buscar times quando a modalidade, turma ou gênero mudar
   useEffect(() => {
     const fetchTeams = async () => {
-      if (!formData.modalidade || !formData.turma) {
+      if (!formData.modalidade || !formData.turma || !formData.genero) {
         setTeams([])
         return
       }
@@ -64,6 +64,7 @@ const InscricaoJogador = () => {
           .select('*')
           .eq('modality', formData.modalidade)
           .eq('turma', formData.turma)
+          .or(`category.eq.${formData.genero},category.eq.Misto`)
 
         if (error) throw error
 
@@ -75,7 +76,7 @@ const InscricaoJogador = () => {
     }
 
     fetchTeams()
-  }, [formData.modalidade, formData.turma])
+  }, [formData.modalidade, formData.turma, formData.genero])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -97,25 +98,33 @@ const InscricaoJogador = () => {
         if (!formData.lateralidade) throw new Error('Selecione uma lateralidade válida')
       }
       
+      // Preparar dados para inserção
+      const requestData = {
+        nome_jogador: formData.nomeJogador.trim(),
+        turma: formData.turma,
+        modalidade: formData.modalidade,
+        team_id: parseInt(formData.teamId),
+        genero: formData.genero,
+        numero_camisa: formData.numeroCamisa.toString(),
+        posicao: formData.modalidade === 'Vôlei' ? formData.posicao : null,
+        empunhadura: formData.modalidade === 'Tênis de Mesa' ? formData.empunhadura : null,
+        estilo_jogo: formData.modalidade === 'Tênis de Mesa' ? formData.estiloJogo : null,
+        lateralidade: formData.modalidade === 'Tênis de Mesa' ? formData.lateralidade : null,
+        telefone: formData.telefone.replace(/\D/g, ''), // Remove caracteres não numéricos
+        status: 'pendente'
+      }
+
+      // Validar campos obrigatórios
+      if (!requestData.nome_jogador || !requestData.turma || !requestData.modalidade || 
+          !requestData.team_id || !requestData.genero || !requestData.numero_camisa || 
+          !requestData.telefone) {
+        throw new Error('Todos os campos obrigatórios devem ser preenchidos')
+      }
+
       // Enviar solicitação para o banco
       const { error } = await supabase
         .from('player_requests')
-        .insert([
-          {
-            nome_jogador: formData.nomeJogador,
-            turma: formData.turma,
-            modalidade: formData.modalidade,
-            team_id: formData.teamId,
-            genero: formData.genero,
-            numero_camisa: formData.numeroCamisa,
-            posicao: formData.modalidade === 'Vôlei' ? formData.posicao : null,
-            empunhadura: formData.modalidade === 'Tênis de Mesa' ? formData.empunhadura : null,
-            estilo_jogo: formData.modalidade === 'Tênis de Mesa' ? formData.estiloJogo : null,
-            lateralidade: formData.modalidade === 'Tênis de Mesa' ? formData.lateralidade : null,
-            telefone: formData.telefone,
-            status: 'pendente'
-          }
-        ])
+        .insert([requestData])
 
       if (error) throw error
 
@@ -171,8 +180,8 @@ const InscricaoJogador = () => {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target
     setFormData(prev => {
-      // Se a modalidade ou turma mudar, resetar o time selecionado
-      if (name === 'modalidade' || name === 'turma') {
+      // Se a modalidade, turma ou gênero mudar, resetar o time selecionado
+      if (name === 'modalidade' || name === 'turma' || name === 'genero') {
         return { ...prev, [name]: value, teamId: '' }
       }
       return { ...prev, [name]: value }
@@ -426,6 +435,7 @@ const InscricaoJogador = () => {
                       <option value="">Selecione a empunhadura</option>
                       <option value="Clássica">Clássica</option>
                       <option value="Caneta">Caneta</option>
+                      <option value="Híbrido">Híbrido</option>  
                     </select>
                     {errors.empunhadura && (
                       <p className="mt-1 text-sm text-red-500">{errors.empunhadura}</p>
@@ -450,7 +460,7 @@ const InscricaoJogador = () => {
                       <option value="">Selecione o estilo</option>
                       <option value="Ofensivo">Ofensivo</option>
                       <option value="Defensivo">Defensivo</option>
-                      <option value="All-round">All-round</option>
+                      <option value="All-Around">All-Around</option>
                     </select>
                     {errors.estiloJogo && (
                       <p className="mt-1 text-sm text-red-500">{errors.estiloJogo}</p>
@@ -475,6 +485,7 @@ const InscricaoJogador = () => {
                       <option value="">Selecione a lateralidade</option>
                       <option value="Destro">Destro</option>
                       <option value="Canhoto">Canhoto</option>
+                      <option value="Ambidestro">Ambidestro</option>
                     </select>
                     {errors.lateralidade && (
                       <p className="mt-1 text-sm text-red-500">{errors.lateralidade}</p>

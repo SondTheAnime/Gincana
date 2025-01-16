@@ -1,29 +1,56 @@
-import { Shield, UserPlus, User, Edit, Trash2, Star } from 'lucide-react';
+import { Shield, UserPlus, User, Edit, Trash2, Star, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
 import { Team, Player } from './types';
+import { useState } from 'react';
+import { supabase } from '../../../lib/supabase';
+import { toast } from 'sonner';
 
 interface TeamDetailsProps {
-  selectedTeam: Team | null;
+  team: Team;
   players: Player[];
-  onAddPlayer: () => void;
-  onEditPlayer: (player: Player) => void;
-  onDeletePlayer?: (player: Player) => void;
-  onToggleStarter?: (player: Player) => void;
-  onToggleCaptain?: (player: Player) => void;
+  setPlayers: (players: Player[]) => void;
+  onToggleCaptain: (playerId: number) => void;
+  onToggleStarter: (playerId: number) => void;
 }
 
-const TeamDetails = ({ 
-  selectedTeam, 
+export const TeamDetails = ({
+  team,
   players, 
-  onAddPlayer, 
-  onEditPlayer, 
-  onDeletePlayer,
+  setPlayers,
+  onToggleCaptain,
   onToggleStarter,
-  onToggleCaptain 
 }: TeamDetailsProps) => {
+  const [loadingAction, setLoadingAction] = useState<string | null>(null);
+
+  const handleDeletePlayer = async (playerId: number) => {
+    if (!window.confirm('Tem certeza que deseja excluir este jogador?')) {
+      return;
+    }
+
+    try {
+      setLoadingAction(playerId.toString());
+
+      const { error } = await supabase
+        .from('players')
+        .delete()
+        .eq('id', playerId);
+
+      if (error) throw error;
+
+      // Atualizar a lista de jogadores localmente
+      setPlayers(players.filter(player => player.id !== playerId));
+      toast.success('Jogador excluído com sucesso!');
+    } catch (error) {
+      console.error('Erro ao excluir jogador:', error);
+      toast.error('Erro ao excluir jogador');
+    } finally {
+      setLoadingAction(null);
+    }
+  };
+
   const starters = players.filter(player => player.is_starter);
   const substitutes = players.filter(player => !player.is_starter);
 
-  if (!selectedTeam) {
+  if (!team) {
     return (
       <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-lg shadow-lg p-3 sm:p-6 flex items-center justify-center">
         <div className="text-center">
@@ -82,7 +109,7 @@ const TeamDetails = ({
         <div className="flex items-center space-x-1 sm:space-x-2">
           {onToggleStarter && (
             <button 
-              onClick={() => onToggleStarter(player)}
+              onClick={() => onToggleStarter(player.id)}
               className={`px-2 py-1 text-xs rounded-md transition-colors ${
                 player.is_starter
                   ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
@@ -94,7 +121,7 @@ const TeamDetails = ({
           )}
           {onToggleCaptain && (
             <button 
-              onClick={() => onToggleCaptain(player)}
+              onClick={() => onToggleCaptain(player.id)}
               className={`p-1 rounded-md transition-colors ${
                 player.is_captain
                   ? 'text-yellow-600 bg-yellow-100 dark:bg-yellow-900 dark:text-yellow-400'
@@ -132,11 +159,11 @@ const TeamDetails = ({
         <div className="flex items-center space-x-3">
           <Shield className="h-5 w-5 sm:h-6 sm:w-6 text-green-600 dark:text-green-400" />
           <div>
-            <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">{selectedTeam.name}</h3>
+            <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">{team.name}</h3>
             <div className="flex items-center space-x-2 text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-              <span>{selectedTeam.category}</span>
+              <span>{team.category}</span>
               <span>•</span>
-              <span>{selectedTeam.modality}</span>
+              <span>{team.modality}</span>
             </div>
           </div>
         </div>
@@ -174,6 +201,57 @@ const TeamDetails = ({
           {substitutes.length === 0 && (
             <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
               Nenhum reserva definido
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Lista de Jogadores */}
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+          Jogadores
+        </h3>
+        <div className="space-y-4">
+          {players.map(player => (
+            <div
+              key={player.id}
+              className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    {player.name} - #{player.number}
+                  </h4>
+                  {player.position && (
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      {player.position}
+                    </p>
+                  )}
+                </div>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => handleDeletePlayer(player.id)}
+                    disabled={loadingAction === player.id.toString()}
+                    className={`
+                      p-1 rounded-full text-red-600 
+                      hover:bg-red-100 dark:hover:bg-red-900
+                      disabled:opacity-50 disabled:cursor-not-allowed
+                    `}
+                    title="Excluir jogador"
+                  >
+                    {loadingAction === player.id.toString() ? (
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-5 w-5" />
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+          {players.length === 0 && (
+            <p className="text-gray-500 dark:text-gray-400 text-center py-4">
+              Nenhum jogador cadastrado
             </p>
           )}
         </div>

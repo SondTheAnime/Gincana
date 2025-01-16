@@ -1,7 +1,9 @@
-import { Shield, UserPlus, User, Edit, Star } from 'lucide-react';
+import { Shield, UserPlus, User, Edit, Star, Trash2, Loader2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { VoleiTeam, VoleiPlayer } from './types';
 import PlayerStatsModal from './PlayerStatsModal';
+import { supabase } from '../../../../../lib/supabase';
+import { toast } from 'sonner';
 
 interface VoleiTeamDetailsProps {
   selectedTeam: VoleiTeam | null;
@@ -9,6 +11,8 @@ interface VoleiTeamDetailsProps {
   onEditPlayer: (player: VoleiPlayer) => void;
   onToggleStarter: (player: VoleiPlayer) => void;
   onToggleCaptain: (player: VoleiPlayer) => void;
+  players: VoleiPlayer[];
+  setPlayers: (players: VoleiPlayer[]) => void;
 }
 
 const VoleiTeamDetails = ({
@@ -16,16 +20,52 @@ const VoleiTeamDetails = ({
   onAddPlayer,
   onEditPlayer,
   onToggleStarter,
-  onToggleCaptain
+  onToggleCaptain,
+  players,
+  setPlayers
 }: VoleiTeamDetailsProps) => {
   const [selectedPlayer, setSelectedPlayer] = useState<VoleiPlayer | null>(null);
+  const [loadingAction, setLoadingAction] = useState<string | null>(null);
+
+  // Inicializa players com os jogadores do time selecionado
+  useEffect(() => {
+    if (selectedTeam) {
+      setPlayers(selectedTeam.players);
+    }
+  }, [selectedTeam, setPlayers]);
 
   useEffect(() => {
     if (selectedPlayer && selectedTeam) {
-      const updatedPlayer = selectedTeam.players.find(p => p.id === selectedPlayer.id);
+      const updatedPlayer = players?.find(p => p.id === selectedPlayer.id);
       setSelectedPlayer(updatedPlayer || null);
     }
-  }, [selectedTeam, selectedTeam?.players]);
+  }, [selectedTeam, players]);
+
+  const handleDeletePlayer = async (playerId: number) => {
+    if (!window.confirm('Tem certeza que deseja excluir este jogador?')) {
+      return;
+    }
+
+    try {
+      setLoadingAction(playerId.toString());
+
+      const { error } = await supabase
+        .from('players')
+        .delete()
+        .eq('id', playerId);
+
+      if (error) throw error;
+
+      // Atualizar a lista de jogadores localmente
+      setPlayers(players.filter(player => player.id !== playerId));
+      toast.success('Jogador excluído com sucesso!');
+    } catch (error) {
+      console.error('Erro ao excluir jogador:', error);
+      toast.error('Erro ao excluir jogador');
+    } finally {
+      setLoadingAction(null);
+    }
+  };
 
   if (!selectedTeam) {
     return (
@@ -40,8 +80,8 @@ const VoleiTeamDetails = ({
     );
   }
 
-  const starters = selectedTeam.players.filter(player => player.is_starter);
-  const substitutes = selectedTeam.players.filter(player => !player.is_starter);
+  const starters = players?.filter(player => player.is_starter) || [];
+  const substitutes = players?.filter(player => !player.is_starter) || [];
 
   const renderPlayerCard = (player: VoleiPlayer) => (
     <div
@@ -123,6 +163,25 @@ const VoleiTeamDetails = ({
             aria-label="Editar jogador"
           >
             <Edit className="h-4 w-4" />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDeletePlayer(player.id);
+            }}
+            disabled={loadingAction === player.id.toString()}
+            className={`
+              p-1 rounded-full text-red-600 
+              hover:bg-red-100 dark:hover:bg-red-900
+              disabled:opacity-50 disabled:cursor-not-allowed
+            `}
+            title="Excluir jogador"
+          >
+            {loadingAction === player.id.toString() ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Trash2 className="h-4 w-4" />
+            )}
           </button>
         </div>
       </div>

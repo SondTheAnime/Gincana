@@ -7,6 +7,7 @@ import TableTennisTeamsList from './TableTennisTeamsList';
 const POSITIONS = ['Destro', 'Canhoto', 'Ambidestro'] as const;
 
 const ManageTableTennisTeams = () => {
+
   const mapTeamData = (data: any): TableTennisTeam => ({
     ...data,
     players: data.players?.map((player: any) => mapPlayerData(player)) || []

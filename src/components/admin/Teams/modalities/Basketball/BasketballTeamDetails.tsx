@@ -1,7 +1,9 @@
-import { Shield, UserPlus, User, Edit, Star } from 'lucide-react';
+import { Shield, UserPlus, User, Edit, Trash2, Star, Loader2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { BasketballTeam, BasketballPlayer } from './types';
 import PlayerStatsModal from './PlayerStatsModal';
+import { supabase } from '../../../../../lib/supabase';
+import { toast } from 'sonner';
 
 interface BasketballTeamDetailsProps {
   selectedTeam: BasketballTeam | null;
@@ -19,6 +21,7 @@ const BasketballTeamDetails = ({
   onToggleCaptain
 }: BasketballTeamDetailsProps) => {
   const [selectedPlayer, setSelectedPlayer] = useState<BasketballPlayer | null>(null);
+  const [loadingAction, setLoadingAction] = useState<string | null>(null);
 
   useEffect(() => {
     if (selectedPlayer && selectedTeam) {
@@ -26,6 +29,32 @@ const BasketballTeamDetails = ({
       setSelectedPlayer(updatedPlayer || null);
     }
   }, [selectedTeam, selectedTeam?.players]);
+
+  const handleDeletePlayer = async (playerId: number) => {
+    if (!window.confirm('Tem certeza que deseja excluir este jogador?')) {
+      return
+    }
+
+    try {
+      setLoadingAction(playerId.toString())
+
+      const { error } = await supabase
+        .from('players')
+        .delete()
+        .eq('id', playerId)
+
+      if (error) throw error
+
+      // Atualizar a lista de jogadores localmente
+      setPlayers(players.filter(player => player.id !== playerId))
+      toast.success('Jogador excluído com sucesso!')
+    } catch (error) {
+      console.error('Erro ao excluir jogador:', error)
+      toast.error('Erro ao excluir jogador')
+    } finally {
+      setLoadingAction(null)
+    }
+  }
 
   if (!selectedTeam) {
     return (

@@ -423,6 +423,19 @@ export function BaseManageTeams<T extends BaseTeam, P extends BasePlayer>({
           onEditPlayer={handleEditPlayer}
           onToggleStarter={handleToggleStarter}
           onToggleCaptain={handleToggleCaptain}
+          players={selectedTeam?.players || []}
+          setPlayers={(newPlayers: P[]) => {
+            if (selectedTeam) {
+              setTeams(prevTeams =>
+                prevTeams.map(team =>
+                  team.id === selectedTeam.id
+                    ? { ...team, players: newPlayers }
+                    : team
+                )
+              );
+              setSelectedTeam({ ...selectedTeam, players: newPlayers });
+            }
+          }}
         />
       </div>
 
