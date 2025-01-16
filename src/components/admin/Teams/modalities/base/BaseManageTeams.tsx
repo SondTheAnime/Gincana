@@ -14,6 +14,7 @@ interface BaseManageTeamsProps<T extends BaseTeam, P extends BasePlayer> {
   defaultPlayerStats: any;
   mapTeamData: (data: any) => T;
   mapPlayerData: (data: any) => P;
+  onDeleteTeam: (teamId: number) => Promise<void>;
 }
 
 export function BaseManageTeams<T extends BaseTeam, P extends BasePlayer>({
@@ -25,7 +26,8 @@ export function BaseManageTeams<T extends BaseTeam, P extends BasePlayer>({
   formations,
   defaultPlayerStats,
   mapTeamData,
-  mapPlayerData
+  mapPlayerData,
+  onDeleteTeam
 }: BaseManageTeamsProps<T, P>) {
   const [teams, setTeams] = useState<T[]>([]);
   const [selectedTeam, setSelectedTeam] = useState<T | null>(null);
@@ -366,12 +368,39 @@ export function BaseManageTeams<T extends BaseTeam, P extends BasePlayer>({
     }
 
     try {
-      const { error } = await supabase
+      // Primeiro, buscar todas as solicitações de jogadores associadas ao time
+      const { data: requests, error: fetchError } = await supabase
+        .from('player_requests')
+        .select('id')
+        .eq('team_id', teamId);
+
+      if (fetchError) throw fetchError;
+
+      // Se houver solicitações, excluí-las uma a uma
+      if (requests && requests.length > 0) {
+        const { error: requestsError } = await supabase
+          .from('player_requests')
+          .delete()
+          .in('id', requests.map(req => req.id));
+
+        if (requestsError) throw requestsError;
+      }
+
+      // Depois, excluir os jogadores do time
+      const { error: playersError } = await supabase
+        .from('players')
+        .delete()
+        .eq('team_id', teamId);
+
+      if (playersError) throw playersError;
+
+      // Por fim, excluir o time
+      const { error: teamError } = await supabase
         .from('teams')
         .delete()
         .eq('id', teamId);
 
-      if (error) throw error;
+      if (teamError) throw teamError;
 
       setTeams(teams.filter(team => team.id !== teamId));
       if (selectedTeam?.id === teamId) {

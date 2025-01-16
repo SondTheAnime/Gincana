@@ -1,12 +1,19 @@
+import { useState } from 'react';
 import { TableTennisTeam, TableTennisPlayer } from './types';
-import { BaseManageTeams } from '../base/BaseManageTeams';
-import TableTennisTeamDetails from './TableTennisTeamDetails';
+import { supabase } from '../../../../../lib/supabase';
+import { toast } from 'react-toastify';
 import TableTennisTeamModals from './TableTennisTeamModals';
 import TableTennisTeamsList from './TableTennisTeamsList';
+import TableTennisTeamDetails from './TableTennisTeamDetails';
+import { BaseManageTeams } from '../base/BaseManageTeams';
 
 const POSITIONS = ['Destro', 'Canhoto', 'Ambidestro'] as const;
 
 const ManageTableTennisTeams = () => {
+  const [teams, setTeams] = useState<TableTennisTeam[]>([]);
+  const [selectedTeam, setSelectedTeam] = useState<TableTennisTeam | null>(null);
+  const [isEditingTeam, setIsEditingTeam] = useState(false);
+  const [editingTeam, setEditingTeam] = useState<TableTennisTeam | null>(null);
 
   const mapTeamData = (data: any): TableTennisTeam => ({
     ...data,
@@ -37,6 +44,44 @@ const ManageTableTennisTeams = () => {
     }
   });
 
+  const handleDeleteTeam = async (teamId: number) => {
+    if (!window.confirm('Tem certeza que deseja excluir este time? Esta ação não pode ser desfeita.')) {
+      return;
+    }
+
+    try {
+      // Primeiro, excluir todas as solicitações de jogadores associadas ao time
+      const { error: requestsError } = await supabase
+        .from('player_requests')
+        .delete()
+        .eq('team_id', teamId);
+
+      if (requestsError) throw requestsError;
+
+      // Depois, excluir o time
+      const { error: teamError } = await supabase
+        .from('teams')
+        .delete()
+        .eq('id', teamId);
+
+      if (teamError) throw teamError;
+
+      const updatedTeams = teams.filter(team => team.id !== teamId);
+      setTeams(updatedTeams);
+      
+      if (selectedTeam?.id === teamId) {
+        setSelectedTeam(null);
+      }
+
+      setIsEditingTeam(false);
+      setEditingTeam(null);
+      toast.success('Time excluído com sucesso!');
+    } catch (error) {
+      console.error('Erro ao excluir time:', error);
+      toast.error('Erro ao excluir time. Tente novamente.');
+    }
+  };
+
   return (
     <BaseManageTeams<TableTennisTeam, TableTennisPlayer>
       modality="Tênis de Mesa"
@@ -60,6 +105,7 @@ const ManageTableTennisTeams = () => {
       }}
       mapTeamData={mapTeamData}
       mapPlayerData={mapPlayerData}
+      onDeleteTeam={handleDeleteTeam}
     />
   );
 };

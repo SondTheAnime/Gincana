@@ -2,6 +2,8 @@ import { X } from 'lucide-react';
 import { TableTennisTeam, TableTennisPlayer } from './types';
 import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
+import { supabase } from '../../../../../lib/supabase.ts';
+import { toast } from 'react-hot-toast';
 
 interface TableTennisTeamModalsProps {
   isAddingTeam: boolean;
@@ -57,111 +59,143 @@ const TableTennisTeamModals = ({
     team: Partial<TableTennisTeam>,
     onSubmit: (e: React.FormEvent) => void,
     onChange: (field: string, value: any) => void
-  ) => (
-    <form onSubmit={onSubmit} className="space-y-4">
-      <div>
-        <label
-          htmlFor={`${isEditing ? 'edit' : 'new'}-team-name`}
-          className="block text-sm font-medium text-gray-700 dark:text-gray-200"
-        >
-          Nome do Time
-        </label>
-        <input
-          type="text"
-          id={`${isEditing ? 'edit' : 'new'}-team-name`}
-          value={team.name || ''}
-          onChange={(e) => onChange('name', e.target.value)}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
-          required
-        />
-      </div>
+  ) => {
+    const handleDeleteTeam = async () => {
+      if (!window.confirm('Tem certeza que deseja excluir este time? Todas as solicitações de jogadores relacionadas também serão excluídas.')) {
+        return;
+      }
 
-      <div>
-        <label
-          htmlFor={`${isEditing ? 'edit' : 'new'}-team-category`}
-          className="block text-sm font-medium text-gray-700 dark:text-gray-200"
-        >
-          Categoria
-        </label>
-        <select
-          id={`${isEditing ? 'edit' : 'new'}-team-category`}
-          value={team.category || 'Masculino'}
-          onChange={(e) => onChange('category', e.target.value)}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
-        >
-          <option value="Masculino">Masculino</option>
-          <option value="Feminino">Feminino</option>
-          <option value="Misto">Misto</option>
-        </select>
-      </div>
+      try {
+        // Primeiro, excluir todas as solicitações relacionadas ao time
+        const { error: requestsError } = await supabase
+          .from('player_requests')
+          .delete()
+          .eq('team_id', team.id);
 
-      <div>
-        <label
-          htmlFor={`${isEditing ? 'edit' : 'new'}-team-coach`}
-          className="block text-sm font-medium text-gray-700 dark:text-gray-200"
-        >
-          Técnico
-        </label>
-        <input
-          type="text"
-          id={`${isEditing ? 'edit' : 'new'}-team-coach`}
-          value={team.coach || ''}
-          onChange={(e) => onChange('coach', e.target.value)}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
-        />
-      </div>
+        if (requestsError) throw requestsError;
 
-      <div>
-        <label
-          htmlFor={`${isEditing ? 'edit' : 'new'}-team-assistant`}
-          className="block text-sm font-medium text-gray-700 dark:text-gray-200"
-        >
-          Técnico Assistente
-        </label>
-        <input
-          type="text"
-          id={`${isEditing ? 'edit' : 'new'}-team-assistant`}
-          value={team.assistant_coach || ''}
-          onChange={(e) => onChange('assistant_coach', e.target.value)}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
-        />
-      </div>
+        // Depois, excluir o time
+        const { error: teamError } = await supabase
+          .from('teams')
+          .delete()
+          .eq('id', team.id);
 
-      <div>
-        <label
-          htmlFor={`${isEditing ? 'edit' : 'new'}-team-court`}
-          className="block text-sm font-medium text-gray-700 dark:text-gray-200"
-        >
-          Local de Treino
-        </label>
-        <input
-          type="text"
-          id={`${isEditing ? 'edit' : 'new'}-team-court`}
-          value={team.home_court || ''}
-          onChange={(e) => onChange('home_court', e.target.value)}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
-        />
-      </div>
+        if (teamError) throw teamError;
 
-      <div className="flex justify-end space-x-3">
-        {isEditing && (
-          <button
-            type="button"
-            onClick={() => onDeleteTeam(team.id!)}
-            className="inline-flex justify-center rounded-md border border-transparent bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+        onDeleteTeam(team.id!);
+        toast.success('Time excluído com sucesso!');
+      } catch (error) {
+        console.error('Erro ao excluir time:', error);
+        toast.error('Erro ao excluir time. Por favor, tente novamente.');
+      }
+    };
+
+    return (
+      <form onSubmit={onSubmit} className="space-y-4">
+        <div>
+          <label
+            htmlFor={`${isEditing ? 'edit' : 'new'}-team-name`}
+            className="block text-sm font-medium text-gray-700 dark:text-gray-200"
           >
-            Excluir Time
+            Nome do Time
+          </label>
+          <input
+            type="text"
+            id={`${isEditing ? 'edit' : 'new'}-team-name`}
+            value={team.name || ''}
+            onChange={(e) => onChange('name', e.target.value)}
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
+            required
+          />
+        </div>
+
+        <div>
+          <label
+            htmlFor={`${isEditing ? 'edit' : 'new'}-team-category`}
+            className="block text-sm font-medium text-gray-700 dark:text-gray-200"
+          >
+            Categoria
+          </label>
+          <select
+            id={`${isEditing ? 'edit' : 'new'}-team-category`}
+            value={team.category || 'Masculino'}
+            onChange={(e) => onChange('category', e.target.value)}
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
+          >
+            <option value="Masculino">Masculino</option>
+            <option value="Feminino">Feminino</option>
+            <option value="Misto">Misto</option>
+          </select>
+        </div>
+
+        <div>
+          <label
+            htmlFor={`${isEditing ? 'edit' : 'new'}-team-coach`}
+            className="block text-sm font-medium text-gray-700 dark:text-gray-200"
+          >
+            Técnico
+          </label>
+          <input
+            type="text"
+            id={`${isEditing ? 'edit' : 'new'}-team-coach`}
+            value={team.coach || ''}
+            onChange={(e) => onChange('coach', e.target.value)}
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
+          />
+        </div>
+
+        <div>
+          <label
+            htmlFor={`${isEditing ? 'edit' : 'new'}-team-assistant`}
+            className="block text-sm font-medium text-gray-700 dark:text-gray-200"
+          >
+            Técnico Assistente
+          </label>
+          <input
+            type="text"
+            id={`${isEditing ? 'edit' : 'new'}-team-assistant`}
+            value={team.assistant_coach || ''}
+            onChange={(e) => onChange('assistant_coach', e.target.value)}
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
+          />
+        </div>
+
+        <div>
+          <label
+            htmlFor={`${isEditing ? 'edit' : 'new'}-team-court`}
+            className="block text-sm font-medium text-gray-700 dark:text-gray-200"
+          >
+            Local de Treino
+          </label>
+          <input
+            type="text"
+            id={`${isEditing ? 'edit' : 'new'}-team-court`}
+            value={team.home_court || ''}
+            onChange={(e) => onChange('home_court', e.target.value)}
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
+          />
+        </div>
+
+        <div className="flex justify-end space-x-3">
+          {isEditing && (
+            <button
+              type="button"
+              onClick={handleDeleteTeam}
+              className="inline-flex justify-center rounded-md border border-transparent bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+            >
+              Excluir Time
+            </button>
+          )}
+          <button
+            type="submit"
+            className="inline-flex justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+          >
+            {isEditing ? 'Atualizar' : 'Criar'} Time
           </button>
-        )}
-        <button
-          type="submit"
-          className="inline-flex justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-        >
-          {isEditing ? 'Atualizar' : 'Criar'} Time
-        </button>
-      </div>
-    </form>
-  );
+        </div>
+      </form>
+    );
+  };
 
   const renderPlayerForm = (
     isEditing: boolean,
