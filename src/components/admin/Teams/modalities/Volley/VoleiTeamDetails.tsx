@@ -39,7 +39,7 @@ const VoleiTeamDetails = ({
       const updatedPlayer = players?.find(p => p.id === selectedPlayer.id);
       setSelectedPlayer(updatedPlayer || null);
     }
-  }, [selectedTeam, players]);
+  }, [selectedTeam, players, selectedPlayer]);
 
   const handleDeletePlayer = async (playerId: number) => {
     if (!window.confirm('Tem certeza que deseja excluir este jogador?')) {

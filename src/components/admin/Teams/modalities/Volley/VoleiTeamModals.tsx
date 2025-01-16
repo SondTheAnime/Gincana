@@ -1,5 +1,5 @@
 import { X, Upload, Image } from 'lucide-react';
-import { VoleiTeam, VoleiPlayer } from './types';
+import { VoleiTeam, VoleiPlayer, VoleiStats } from './types';
 import { supabase } from '../../../../../lib/supabase';
 
 interface VoleiTeamModalsProps {
@@ -19,10 +19,10 @@ interface VoleiTeamModalsProps {
   onSubmitPlayer: (e: React.FormEvent) => void;
   onUpdatePlayer: (e: React.FormEvent) => void;
   onUpdateTeam: (e: React.FormEvent) => void;
-  onChangeNewTeam: (field: string, value: any) => void;
-  onChangeNewPlayer: (field: string, value: any) => void;
-  onChangeEditingPlayer: (field: string, value: any) => void;
-  onChangeEditingTeam: (field: string, value: any) => void;
+  onChangeNewTeam: (field: keyof VoleiTeam, value: VoleiTeam[keyof VoleiTeam]) => void;
+  onChangeNewPlayer: (field: keyof VoleiPlayer, value: VoleiPlayer[keyof VoleiPlayer]) => void;
+  onChangeEditingPlayer: (field: keyof VoleiPlayer, value: VoleiPlayer[keyof VoleiPlayer]) => void;
+  onChangeEditingTeam: (field: keyof VoleiTeam, value: VoleiTeam[keyof VoleiTeam]) => void;
   positions: readonly string[];
   formations: readonly string[];
   onDeleteTeam: (teamId: number) => void;
@@ -86,14 +86,44 @@ const VoleiTeamModals = ({
 
   const handleStatChange = (field: string, value: string, isEditing: boolean) => {
     const numValue = parseInt(value) || 0;
-    const stats = isEditing
-      ? { ...(editingPlayer?.stats || {}), [field]: numValue }
-      : { ...(newPlayer.stats || {}), [field]: numValue };
+    
+    const baseStats: VoleiStats = isEditing
+      ? {
+          points: editingPlayer?.stats?.points ?? 0,
+          aces: editingPlayer?.stats?.aces ?? 0,
+          blocks: editingPlayer?.stats?.blocks ?? 0,
+          kills: editingPlayer?.stats?.kills ?? 0,
+          digs: editingPlayer?.stats?.digs ?? 0,
+          assists: editingPlayer?.stats?.assists ?? 0,
+          faults: editingPlayer?.stats?.faults ?? 0,
+          reception_errors: editingPlayer?.stats?.reception_errors ?? 0,
+          service_errors: editingPlayer?.stats?.service_errors ?? 0,
+          attack_errors: editingPlayer?.stats?.attack_errors ?? 0,
+          block_errors: editingPlayer?.stats?.block_errors ?? 0
+        }
+      : {
+          points: newPlayer?.stats?.points ?? 0,
+          aces: newPlayer?.stats?.aces ?? 0,
+          blocks: newPlayer?.stats?.blocks ?? 0,
+          kills: newPlayer?.stats?.kills ?? 0,
+          digs: newPlayer?.stats?.digs ?? 0,
+          assists: newPlayer?.stats?.assists ?? 0,
+          faults: newPlayer?.stats?.faults ?? 0,
+          reception_errors: newPlayer?.stats?.reception_errors ?? 0,
+          service_errors: newPlayer?.stats?.service_errors ?? 0,
+          attack_errors: newPlayer?.stats?.attack_errors ?? 0,
+          block_errors: newPlayer?.stats?.block_errors ?? 0
+        };
+
+    const updatedStats: VoleiStats = {
+      ...baseStats,
+      [field]: numValue
+    };
 
     if (isEditing) {
-      onChangeEditingPlayer('stats', stats);
+      onChangeEditingPlayer('stats', updatedStats);
     } else {
-      onChangeNewPlayer('stats', stats);
+      onChangeNewPlayer('stats', updatedStats);
     }
   };
 

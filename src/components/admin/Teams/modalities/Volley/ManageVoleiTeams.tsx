@@ -8,7 +8,41 @@ import { supabase } from '../../../../../lib/supabase';
 import { toast } from 'react-toastify';
 
 const POSITIONS = ['Levantador', 'Oposto', 'Ponteiro', 'Central', 'Líbero'] as const;
-const FORMATIONS = ['5-1', '4-2', '6-2'] as const;
+const FORMATIONS = ['5-1', '4-2', '6-0'] as const;
+
+type PlayerStats = {
+  points: number
+  aces: number
+  blocks: number
+  kills: number
+  digs: number
+  assists: number
+  faults: number
+  reception_errors: number
+  service_errors: number
+  attack_errors: number
+  block_errors: number
+}
+
+type DbPlayer = {
+  id: number
+  name: string
+  number: string
+  position: string
+  team_id: number
+  stats: PlayerStats | null
+}
+
+type DbTeam = {
+  id: number
+  name: string
+  modality: string
+  category: string
+  turma: string
+  coach: string
+  assistant_coach: string | null
+  players: DbPlayer[]
+}
 
 const ManageVoleiTeams = () => {
   // Estados similares ao ManageFutsalTeams
@@ -97,9 +131,11 @@ const ManageVoleiTeams = () => {
 
       if (teamsError) throw teamsError;
 
-      const voleiTeams: VoleiTeam[] = teamsData.map((team: any) => ({
+      const voleiTeams: VoleiTeam[] = (teamsData as DbTeam[]).map((team) => ({
         ...team,
-        players: (team.players || []).map((player: any) => ({
+        coach: team.coach || undefined,
+        assistant_coach: team.assistant_coach || undefined,
+        players: (team.players || []).map((player) => ({
           ...player,
           stats: {
             points: player.stats?.points || 0,
@@ -115,7 +151,7 @@ const ManageVoleiTeams = () => {
             block_errors: player.stats?.block_errors || 0
           }
         }))
-      })) as VoleiTeam[];
+      }));
 
       setTeams(voleiTeams);
     } catch (error) {
@@ -427,17 +463,49 @@ const ManageVoleiTeams = () => {
   };
 
   const handleDeleteTeam = async (teamId: number) => {
-    if (!window.confirm('Tem certeza que deseja excluir este time? Esta ação não pode ser desfeita.')) {
+    if (!window.confirm(
+      'ATENÇÃO: Esta ação irá:\n\n' +
+      '- Excluir o time\n' +
+      '- Excluir todos os jogadores do time\n' +
+      '- Excluir todas as solicitações de jogadores pendentes\n\n' +
+      'Esta ação não pode ser desfeita. Deseja continuar?'
+    )) {
       return;
     }
 
     try {
-      const { error } = await supabase
+      // Deletar solicitações de jogadores
+      const { error: playerRequestsError } = await supabase
+        .from('player_requests')
+        .delete()
+        .eq('team_id', teamId);
+
+      if (playerRequestsError) {
+        console.error('Erro ao excluir solicitações de jogadores:', playerRequestsError);
+        throw playerRequestsError;
+      }
+
+      // Deletar jogadores
+      const { error: playersError } = await supabase
+        .from('players')
+        .delete()
+        .eq('team_id', teamId);
+
+      if (playersError) {
+        console.error('Erro ao excluir jogadores:', playersError);
+        throw playersError;
+      }
+
+      // Finalmente, deletar o time
+      const { error: teamError } = await supabase
         .from('teams')
         .delete()
         .eq('id', teamId);
 
-      if (error) throw error;
+      if (teamError) {
+        console.error('Erro ao excluir time:', teamError);
+        throw teamError;
+      }
 
       const updatedTeams = teams.filter(team => team.id !== teamId);
       setTeams(updatedTeams);
@@ -448,10 +516,10 @@ const ManageVoleiTeams = () => {
 
       setIsEditingTeam(false);
       setEditingTeam(null);
-      toast.success('Time excluído com sucesso!');
+      toast.success('Time e todos os registros relacionados foram excluídos com sucesso!');
     } catch (error) {
-      console.error('Erro ao excluir time:', error);
-      toast.error('Erro ao excluir time. Tente novamente.');
+      console.error('Erro ao excluir time e registros relacionados:', error);
+      toast.error('Erro ao excluir time e registros relacionados. Tente novamente.');
     }
   };
 
