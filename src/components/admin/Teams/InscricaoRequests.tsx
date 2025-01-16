@@ -4,7 +4,7 @@ import { supabase } from '../../../lib/supabase'
 import { toast } from 'sonner'
 
 type InscricaoTimeRequest = {
-  id: string
+  id: number
   nomeTecnico: string
   auxiliarTecnico?: string | null
   turma: string
@@ -16,13 +16,13 @@ type InscricaoTimeRequest = {
 }
 
 type InscricaoJogadorRequest = {
-  id: string
+  id: number
   nomeJogador: string
   turma: string
   genero: string
   numeroCamisa: string
   modalidade: string
-  team_id: string
+  team_id: number
   posicao?: string
   empunhadura?: string
   estiloJogo?: string
@@ -33,11 +33,11 @@ type InscricaoJogadorRequest = {
 }
 
 const InscricaoRequests = () => {
-  const [expandedTime, setExpandedTime] = useState<string | null>(null)
-  const [expandedJogador, setExpandedJogador] = useState<string | null>(null)
+  const [expandedTime, setExpandedTime] = useState<number | null>(null)
+  const [expandedJogador, setExpandedJogador] = useState<number | null>(null)
   const [timeRequests, setTimeRequests] = useState<InscricaoTimeRequest[]>([])
   const [jogadorRequests, setJogadorRequests] = useState<InscricaoJogadorRequest[]>([])
-  const [loadingAction, setLoadingAction] = useState<string | null>(null)
+  const [loadingAction, setLoadingAction] = useState<number | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
@@ -101,7 +101,7 @@ const InscricaoRequests = () => {
     }
   }
 
-  const handleTimeAction = async (id: string, action: 'aprovar' | 'rejeitar') => {
+  const handleTimeAction = async (id: number, action: 'aprovar' | 'rejeitar') => {
     try {
       setLoadingAction(id)
       const request = timeRequests.find(r => r.id === id)
@@ -208,7 +208,7 @@ const InscricaoRequests = () => {
     }
   }
 
-  const handleJogadorAction = async (id: string, action: 'aprovar' | 'rejeitar') => {
+  const handleJogadorAction = async (id: number, action: 'aprovar' | 'rejeitar') => {
     try {
       setLoadingAction(id)
       const request = jogadorRequests.find(r => r.id === id)
@@ -296,28 +296,61 @@ const InscricaoRequests = () => {
     }
   }
 
-  const handleDeleteTimeRequest = async (id: string) => {
+  const handleDeleteTimeRequest = async (id: number) => {
     try {
+      console.log('Iniciando deleção do time request:', id)
       setLoadingAction(id)
       
-      const { error } = await supabase
+      // Primeiro, verifica se o registro existe
+      const { data: existingRequest, error: fetchError } = await supabase
+        .from('team_requests')
+        .select('*')
+        .eq('id', id)
+        .single()
+
+      if (fetchError) {
+        console.error('Erro ao verificar solicitação:', fetchError)
+        throw fetchError
+      }
+
+      if (!existingRequest) {
+        throw new Error('Solicitação não encontrada')
+      }
+
+      // Tenta deletar o registro
+      const { error: deleteError } = await supabase
         .from('team_requests')
         .delete()
         .eq('id', id)
 
-      if (error) throw error
+      if (deleteError) {
+        console.error('Erro ao excluir solicitação:', deleteError)
+        throw deleteError
+      }
 
-      setTimeRequests(prev => prev.filter(request => request.id !== id))
+      console.log('Registro deletado com sucesso:', id)
+      
+      setTimeRequests(prev => {
+        console.log('Atualizando estado local, removendo id:', id)
+        return prev.filter(request => request.id !== id)
+      })
+      
       toast.success('Solicitação excluída com sucesso!')
     } catch (error) {
       console.error('Erro ao excluir solicitação:', error)
-      toast.error('Erro ao excluir solicitação')
+      if (error instanceof Error) {
+        toast.error(error.message)
+      } else if (typeof error === 'object' && error !== null && 'message' in error) {
+        toast.error(error.message as string)
+      } else {
+        toast.error('Erro ao excluir solicitação')
+      }
     } finally {
       setLoadingAction(null)
     }
   }
 
-  const handleDeleteJogadorRequest = async (id: string) => {
+  const handleDeleteJogadorRequest = async (id: number) => {
     try {
       setLoadingAction(id)
       
