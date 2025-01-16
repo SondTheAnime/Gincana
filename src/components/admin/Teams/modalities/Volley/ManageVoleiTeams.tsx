@@ -1,48 +1,16 @@
 import { useState, useEffect } from 'react';
 import { Users } from 'lucide-react';
+import { z } from 'zod';
 import { VoleiTeam, VoleiPlayer } from './types';
 import VoleiTeamsList from './VoleiTeamsList';
 import VoleiTeamDetails from './VoleiTeamDetails';
 import VoleiTeamModals from './VoleiTeamModals';
 import { supabase } from '../../../../../lib/supabase';
 import { toast } from 'react-toastify';
+import { timeVoleiSchema, jogadorVoleiSchema } from './schemas';
 
 const POSITIONS = ['Levantador', 'Oposto', 'Ponteiro', 'Central', 'Líbero'] as const;
 const FORMATIONS = ['5-1', '4-2', '6-0'] as const;
-
-type PlayerStats = {
-  points: number
-  aces: number
-  blocks: number
-  kills: number
-  digs: number
-  assists: number
-  faults: number
-  reception_errors: number
-  service_errors: number
-  attack_errors: number
-  block_errors: number
-}
-
-type DbPlayer = {
-  id: number
-  name: string
-  number: string
-  position: string
-  team_id: number
-  stats: PlayerStats | null
-}
-
-type DbTeam = {
-  id: number
-  name: string
-  modality: string
-  category: string
-  turma: string
-  coach: string
-  assistant_coach: string | null
-  players: DbPlayer[]
-}
 
 const ManageVoleiTeams = () => {
   // Estados similares ao ManageFutsalTeams
@@ -131,26 +99,31 @@ const ManageVoleiTeams = () => {
 
       if (teamsError) throw teamsError;
 
-      const voleiTeams: VoleiTeam[] = (teamsData as DbTeam[]).map((team) => ({
+      const voleiTeams: VoleiTeam[] = teamsData.map((team) => ({
         ...team,
-        coach: team.coach || undefined,
-        assistant_coach: team.assistant_coach || undefined,
-        players: (team.players || []).map((player) => ({
+        coach: team.coach || '',
+        assistant_coach: team.assistant_coach,
+        home_court: '',
+        players: team.players?.map((player: any) => ({
           ...player,
+          photo: '',
+          is_starter: false,
+          is_captain: false,
+          position: 'Ponteiro',
           stats: {
-            points: player.stats?.points || 0,
-            aces: player.stats?.aces || 0,
-            blocks: player.stats?.blocks || 0,
-            kills: player.stats?.kills || 0,
-            digs: player.stats?.digs || 0,
-            assists: player.stats?.assists || 0,
-            faults: player.stats?.faults || 0,
-            reception_errors: player.stats?.reception_errors || 0,
-            service_errors: player.stats?.service_errors || 0,
-            attack_errors: player.stats?.attack_errors || 0,
-            block_errors: player.stats?.block_errors || 0
+            points: 0,
+            aces: 0, 
+            blocks: 0,
+            kills: 0,
+            digs: 0,
+            assists: 0,
+            faults: 0,
+            reception_errors: 0,
+            service_errors: 0,
+            attack_errors: 0,
+            block_errors: 0
           }
-        }))
+        })) || []
       }));
 
       setTeams(voleiTeams);
@@ -176,15 +149,20 @@ const ManageVoleiTeams = () => {
   const handleSubmitTeam = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      // Validar dados do time
+      const validatedTeam = timeVoleiSchema.parse({
+        name: newTeam.name,
+        category: newTeam.category,
+        coach: newTeam.coach,
+        home_court: newTeam.home_court
+      });
+
       const { data, error } = await supabase
         .from('teams')
         .insert([{
-          name: newTeam.name,
-          category: newTeam.category,
+          ...validatedTeam,
           modality: 'Vôlei',
-          coach: newTeam.coach,
           assistant_coach: newTeam.assistant_coach,
-          home_court: newTeam.home_court,
           formation: newTeam.formation
         }])
         .select()
@@ -205,8 +183,14 @@ const ManageVoleiTeams = () => {
       setIsAddingTeam(false);
       toast.success('Time adicionado com sucesso!');
     } catch (error) {
-      console.error('Erro ao adicionar time:', error);
-      toast.error('Erro ao adicionar time. Tente novamente.');
+      if (error instanceof z.ZodError) {
+        error.errors.forEach((err) => {
+          toast.error(err.message);
+        });
+      } else {
+        console.error('Erro ao adicionar time:', error);
+        toast.error('Erro ao adicionar time. Tente novamente.');
+      }
     }
   };
 
@@ -215,14 +199,19 @@ const ManageVoleiTeams = () => {
     if (!editingTeam) return;
 
     try {
+      // Validar dados do time
+      const validatedTeam = timeVoleiSchema.parse({
+        name: editingTeam.name,
+        category: editingTeam.category,
+        coach: editingTeam.coach,
+        home_court: editingTeam.home_court
+      });
+
       const { error } = await supabase
         .from('teams')
         .update({
-          name: editingTeam.name,
-          category: editingTeam.category,
-          coach: editingTeam.coach,
+          ...validatedTeam,
           assistant_coach: editingTeam.assistant_coach,
-          home_court: editingTeam.home_court,
           formation: editingTeam.formation
         })
         .eq('id', editingTeam.id);
@@ -234,8 +223,14 @@ const ManageVoleiTeams = () => {
       setEditingTeam(null);
       toast.success('Time atualizado com sucesso!');
     } catch (error) {
-      console.error('Erro ao atualizar time:', error);
-      toast.error('Erro ao atualizar time. Tente novamente.');
+      if (error instanceof z.ZodError) {
+        error.errors.forEach((err) => {
+          toast.error(err.message);
+        });
+      } else {
+        console.error('Erro ao atualizar time:', error);
+        toast.error('Erro ao atualizar time. Tente novamente.');
+      }
     }
   };
 
@@ -244,14 +239,19 @@ const ManageVoleiTeams = () => {
     if (!selectedTeam || !newPlayer.name || !newPlayer.position) return;
 
     try {
+      // Validar dados do jogador
+      const validatedPlayer = jogadorVoleiSchema.parse({
+        name: newPlayer.name,
+        number: newPlayer.number,
+        position: newPlayer.position
+      });
+
       const { data, error } = await supabase
         .from('players')
         .insert([{
-          name: newPlayer.name,
-          number: newPlayer.number,
+          ...validatedPlayer,
           team_id: selectedTeam.id,
           photo: newPlayer.photo,
-          position: newPlayer.position,
           stats: newPlayer.stats
         }])
         .select()
@@ -261,7 +261,6 @@ const ManageVoleiTeams = () => {
 
       const newPlayerData = data as VoleiPlayer;
 
-      // Atualizar o estado teams
       setTeams(prevTeams => 
         prevTeams.map(team => 
           team.id === selectedTeam.id 
@@ -270,7 +269,6 @@ const ManageVoleiTeams = () => {
         )
       );
 
-      // Atualizar o estado players
       setPlayers(prevPlayers => [...prevPlayers, newPlayerData]);
 
       setNewPlayer({
@@ -295,8 +293,14 @@ const ManageVoleiTeams = () => {
       setIsAddingPlayer(false);
       toast.success('Jogador adicionado com sucesso!');
     } catch (error) {
-      console.error('Erro ao adicionar jogador:', error);
-      toast.error('Erro ao adicionar jogador. Tente novamente.');
+      if (error instanceof z.ZodError) {
+        error.errors.forEach((err) => {
+          toast.error(err.message);
+        });
+      } else {
+        console.error('Erro ao adicionar jogador:', error);
+        toast.error('Erro ao adicionar jogador. Tente novamente.');
+      }
     }
   };
 
@@ -305,28 +309,19 @@ const ManageVoleiTeams = () => {
     if (!editingPlayer || !selectedTeam) return;
 
     try {
-      const stats = {
-        points: editingPlayer.stats.points || 0,
-        aces: editingPlayer.stats.aces || 0,
-        blocks: editingPlayer.stats.blocks || 0,
-        kills: editingPlayer.stats.kills || 0,
-        digs: editingPlayer.stats.digs || 0,
-        assists: editingPlayer.stats.assists || 0,
-        faults: editingPlayer.stats.faults || 0,
-        reception_errors: editingPlayer.stats.reception_errors || 0,
-        service_errors: editingPlayer.stats.service_errors || 0,
-        attack_errors: editingPlayer.stats.attack_errors || 0,
-        block_errors: editingPlayer.stats.block_errors || 0
-      };
+      // Validar dados do jogador
+      const validatedPlayer = jogadorVoleiSchema.parse({
+        name: editingPlayer.name,
+        number: editingPlayer.number,
+        position: editingPlayer.position
+      });
 
       const { error } = await supabase
         .from('players')
         .update({
-          name: editingPlayer.name,
-          number: editingPlayer.number,
+          ...validatedPlayer,
           photo: editingPlayer.photo,
-          position: editingPlayer.position,
-          stats: stats
+          stats: editingPlayer.stats
         })
         .eq('id', editingPlayer.id);
 
@@ -335,16 +330,15 @@ const ManageVoleiTeams = () => {
       const updatedTeams = teams.map(team => ({
         ...team,
         players: team.players.map(p => 
-          p.id === editingPlayer.id ? { ...editingPlayer, stats } : p
+          p.id === editingPlayer.id ? { ...editingPlayer } : p
         )
       }));
       
       setTeams(updatedTeams);
       
-      // Atualizar o estado players
       setPlayers(prevPlayers => 
         prevPlayers.map(p => 
-          p.id === editingPlayer.id ? { ...editingPlayer, stats } : p
+          p.id === editingPlayer.id ? { ...editingPlayer } : p
         )
       );
       
@@ -359,8 +353,14 @@ const ManageVoleiTeams = () => {
       setEditingPlayer(null);
       toast.success('Jogador atualizado com sucesso!');
     } catch (error) {
-      console.error('Erro ao atualizar jogador:', error);
-      toast.error('Erro ao atualizar jogador. Tente novamente.');
+      if (error instanceof z.ZodError) {
+        error.errors.forEach((err) => {
+          toast.error(err.message);
+        });
+      } else {
+        console.error('Erro ao atualizar jogador:', error);
+        toast.error('Erro ao atualizar jogador. Tente novamente.');
+      }
     }
   };
 

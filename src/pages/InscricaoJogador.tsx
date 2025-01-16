@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Loader2, Check } from 'lucide-react'
+import { ArrowLeft, Loader2, Check, Lock } from 'lucide-react'
 import { z } from 'zod'
 import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
@@ -33,6 +33,7 @@ type FormData = z.infer<typeof formSchema>
 const InscricaoJogador = () => {
   const navigate = useNavigate()
   const [isLoading, setIsLoading] = useState(false)
+  const [inscricoesAbertas, setInscricoesAbertas] = useState(true)
   const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({})
   const [teams, setTeams] = useState<Team[]>([])
   const [formData, setFormData] = useState<FormData>({
@@ -49,6 +50,28 @@ const InscricaoJogador = () => {
     telefone: '',
   })
   const [showSuccess, setShowSuccess] = useState(false)
+
+  useEffect(() => {
+    checkInscricoesStatus()
+  }, [])
+
+  const checkInscricoesStatus = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('inscricoes_config')
+        .select('inscricoes_jogadores_abertas')
+        .single()
+
+      if (error) throw error
+
+      if (data) {
+        setInscricoesAbertas(data.inscricoes_jogadores_abertas)
+      }
+    } catch (error) {
+      console.error('Erro ao verificar status das inscrições:', error)
+      toast.error('Erro ao verificar status das inscrições')
+    }
+  }
 
   // Buscar times quando a modalidade, turma ou gênero mudar
   useEffect(() => {
@@ -186,6 +209,36 @@ const InscricaoJogador = () => {
       }
       return { ...prev, [name]: value }
     })
+  }
+
+  if (!inscricoesAbertas) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-2xl mx-auto">
+          <button
+            onClick={() => navigate('/inscricao')}
+            className="flex items-center text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white mb-8"
+          >
+            <ArrowLeft className="h-5 w-5 mr-2" />
+            Voltar
+          </button>
+
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 text-center">
+            <div className="flex flex-col items-center justify-center space-y-4">
+              <div className="p-3 bg-red-100 dark:bg-red-900 rounded-full">
+                <Lock className="h-8 w-8 text-red-600 dark:text-red-400" />
+              </div>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                Inscrições Fechadas
+              </h1>
+              <p className="text-gray-500 dark:text-gray-400 max-w-md">
+                As inscrições de jogadores estão temporariamente fechadas. Por favor, tente novamente mais tarde.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (

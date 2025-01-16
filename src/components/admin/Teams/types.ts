@@ -34,9 +34,32 @@ export interface BasePlayer {
 export interface Team extends BaseTeam {}
 
 export interface Player extends BasePlayer {
-  goals: number;
-  yellow_cards: number;
-  red_cards: number;
+}
+
+export interface VoleiStats {
+  points: number;
+  aces: number;
+  blocks: number;
+  kills: number;
+  digs: number;
+  assists: number;
+  faults: number;
+  reception_errors: number;
+  service_errors: number;
+  attack_errors: number;
+  block_errors: number;
+}
+
+export interface VoleiPlayer extends BasePlayer {
+  position: 'Levantador' | 'Ponteiro' | 'Oposto' | 'Central' | 'Líbero';
+  stats: VoleiStats;
+}
+
+export interface VoleiTeam extends BaseTeam {
+  coach: string;
+  assistant_coach?: string;
+  home_court: string;
+  players: VoleiPlayer[];
 }
 
 export interface FutsalStats {

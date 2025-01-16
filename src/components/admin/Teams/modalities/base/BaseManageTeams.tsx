@@ -27,7 +27,6 @@ export function BaseManageTeams<T extends BaseTeam, P extends BasePlayer>({
   defaultPlayerStats,
   mapTeamData,
   mapPlayerData,
-  onDeleteTeam
 }: BaseManageTeamsProps<T, P>) {
   const [teams, setTeams] = useState<T[]>([]);
   const [selectedTeam, setSelectedTeam] = useState<T | null>(null);

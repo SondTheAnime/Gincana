@@ -12,8 +12,6 @@ const POSITIONS = ['Destro', 'Canhoto', 'Ambidestro'] as const;
 const ManageTableTennisTeams = () => {
   const [teams, setTeams] = useState<TableTennisTeam[]>([]);
   const [selectedTeam, setSelectedTeam] = useState<TableTennisTeam | null>(null);
-  const [isEditingTeam, setIsEditingTeam] = useState(false);
-  const [editingTeam, setEditingTeam] = useState<TableTennisTeam | null>(null);
 
   const mapTeamData = (data: any): TableTennisTeam => ({
     ...data,
@@ -73,8 +71,6 @@ const ManageTableTennisTeams = () => {
         setSelectedTeam(null);
       }
 
-      setIsEditingTeam(false);
-      setEditingTeam(null);
       toast.success('Time excluído com sucesso!');
     } catch (error) {
       console.error('Erro ao excluir time:', error);
