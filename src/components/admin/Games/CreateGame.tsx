@@ -37,7 +37,7 @@ interface GameFormData {
 
 const defaultConfigs = {
   'Vôlei': {
-    total_sets: 5,
+    total_sets: 3, // Alterado o valor padrão para 3
     points_per_set: 25,
     points_last_set: 15,
     min_difference: 2,
@@ -120,7 +120,7 @@ const CreateGame = ({ isOpen, onClose, onSuccess }: CreateGameProps) => {
     setLoading(true)
 
     try {
-      const { data, error } = await supabase
+      const { data: gameData, error: gameError } = await supabase
         .from('games')
         .insert([
           {
@@ -141,22 +141,31 @@ const CreateGame = ({ isOpen, onClose, onSuccess }: CreateGameProps) => {
         .select()
         .single()
 
-      if (error) throw error
+      if (gameError) throw gameError
 
-      // Criar as configurações do jogo
-      const { error: configError } = await supabase
+      // Verificar se já existe configuração para este jogo
+      const { data: existingConfig } = await supabase
         .from('game_configs')
-        .insert([{
-          game_id: data.id,
-          total_sets: formData.config.total_sets,
-          points_per_set: formData.config.points_per_set,
-          points_last_set: formData.config.points_last_set,
-          min_difference: formData.config.min_difference,
-          max_timeouts: formData.config.max_timeouts,
-          max_substitutions: formData.config.max_substitutions
-        }])
+        .select('*')
+        .eq('game_id', gameData.id)
+        .single()
 
-      if (configError) throw configError
+      // Criar configuração apenas se não existir
+      if (!existingConfig) {
+        const { error: configError } = await supabase
+          .from('game_configs')
+          .insert([{
+            game_id: gameData.id,
+            total_sets: formData.config.total_sets,
+            points_per_set: formData.config.points_per_set,
+            points_last_set: formData.config.points_last_set,
+            min_difference: formData.config.min_difference,
+            max_timeouts: formData.config.max_timeouts,
+            max_substitutions: formData.config.max_substitutions
+          }])
+
+        if (configError) throw configError
+      }
 
       toast.success('Jogo criado com sucesso!')
       onSuccess?.()
@@ -357,17 +366,24 @@ const CreateGame = ({ isOpen, onClose, onSuccess }: CreateGameProps) => {
                   </label>
                   <select
                     value={formData.config.total_sets}
-                    onChange={(e) => setFormData({
-                      ...formData,
-                      config: { ...formData.config, total_sets: Number(e.target.value) }
-                    })}
+                    onChange={(e) => {
+                      const value = Number(e.target.value);
+                      setFormData({
+                        ...formData,
+                        config: {
+                          ...formData.config,
+                          total_sets: value,
+                          // Ajusta pontos do último set automaticamente para jogos de 3 sets
+                          points_last_set: value === 3 ? 25 : 15
+                        }
+                      });
+                    }}
                     className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 dark:text-white"
                     required
                   >
                     {formData.sport === 'Vôlei' ? (
                       <>
-                        <option value={3}>3 Sets</option>
-                        <option value={5}>5 Sets</option>
+                        <option value="3">3 Sets</option>
                       </>
                     ) : (
                       <>
@@ -537,4 +553,4 @@ const CreateGame = ({ isOpen, onClose, onSuccess }: CreateGameProps) => {
   )
 }
 
-export default CreateGame 
+export default CreateGame
