@@ -11,7 +11,7 @@ const LiveGames = () => {
   const [loading, setLoading] = useState(true);
   const [selectedSport, setSelectedSport] = useState('all');
   const [sports, setSports] = useState<string[]>([]);
-  const [selectedGameId, setSelectedGameId] = useState<number | null>(null);
+  const [_selectedGameId, setSelectedGameId] = useState<number | null>(null);
 
   useEffect(() => {
     const fetchGames = async () => {
@@ -393,19 +393,23 @@ const LiveGames = () => {
           <h2 className="text-xl font-bold text-gray-900 dark:text-white">
             Jogos Ao Vivo
           </h2>
+          <div className='relative flex items-center'>
+            <div className='w-3 h-3 bg-red-500 rounded-full animate-ping'></div>
+            <div className='w-3 h-3 bg-red-500 rounded-full absolute'></div>
+          </div>
         </div>
 
         <div className="flex items-center space-x-2">
-          <Filter className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+          <Filter className="h-4 w-4 text-gray-400" />
           <select
             value={selectedSport}
             onChange={(e) => setSelectedSport(e.target.value)}
-            className="text-sm text-gray-600 dark:text-gray-300 bg-transparent focus:outline-none"
+            className="text-sm text-gray-300 bg-gray-800 border border-gray-700 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-red-500"
           >
             <option value="all">Todas Modalidades</option>
             {sports.map((sport) => (
               <option key={sport} value={sport}>
-                {sport}
+          {sport}
               </option>
             ))}
           </select>
