@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 type InscricaoTimeRequest = {
   id: number
   nomeTecnico: string
+  nomeTime: string
   auxiliarTecnico?: string | null
   turma: string
   modalidade: string
@@ -68,6 +69,7 @@ const InscricaoRequests = () => {
       setTimeRequests(timeData.map(item => ({
         id: item.id,
         nomeTecnico: item.nome_tecnico,
+        nomeTime: item.nome_time,
         auxiliarTecnico: item.auxiliar_tecnico,
         turma: item.turma,
         modalidade: item.modalidade,
@@ -136,7 +138,7 @@ const InscricaoRequests = () => {
         const { error: createError } = await supabase
           .from('teams')
           .insert({
-            name: `${request.turma}`,
+            name: request.nomeTime,
             modality: request.modalidade,
             category: request.genero,
             turma: request.turma,
@@ -422,8 +424,11 @@ const InscricaoRequests = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                        {request.nomeTecnico}
+                        {request.nomeTime}
                       </h3>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        Técnico: {request.nomeTecnico}
+                      </p>
                       <p className="text-sm text-gray-500 dark:text-gray-400">
                         {request.modalidade} - {request.turma} - {request.genero}
                       </p>

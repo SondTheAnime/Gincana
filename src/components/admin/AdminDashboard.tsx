@@ -2,7 +2,7 @@ import { Plus, Calendar, Trophy, Users, LogOut, Dumbbell, ClipboardList, Setting
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
-import AddGame from './Games/AddGame';
+import CreateGame from './Games/CreateGame';
 import ManageCalendar from './Calendar/ManageCalendar';
 import ManageScore from './Score/ManageScore';
 import ManageModalities from './Modalities/ManageModalities';
@@ -13,7 +13,7 @@ import GerenciarInscricoes from './Teams/GerenciarInscricoes';
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const [activeComponent, setActiveComponent] = useState<'calendar' | 'score' | 'teams' | 'modalities' | 'requests' | 'inscricoes' | null>(null);
-  const [isAddGameModalOpen, setIsAddGameModalOpen] = useState(false);
+  const [isCreateGameModalOpen, setIsCreateGameModalOpen] = useState(false);
 
   const handleLogout = async () => {
     try {
@@ -50,7 +50,7 @@ const AdminDashboard = () => {
       title: 'Adicionar Novo Jogo',
       subtitle: 'Criar nova partida',
       action: 'Adicionar jogo',
-      onClick: () => setIsAddGameModalOpen(true)
+      onClick: () => setIsCreateGameModalOpen(true)
     },
     {
       id: 'calendar',
@@ -163,10 +163,17 @@ const AdminDashboard = () => {
             {renderContent()}
           </div>
 
-          {/* Add Game Modal */}
-          <AddGame 
-            isOpen={isAddGameModalOpen}
-            onClose={() => setIsAddGameModalOpen(false)}
+          {/* Create Game Modal */}
+          <CreateGame 
+            isOpen={isCreateGameModalOpen}
+            onClose={() => setIsCreateGameModalOpen(false)}
+            onSuccess={() => {
+              // Atualizar a lista de jogos se necessário
+              if (activeComponent === 'calendar') {
+                setActiveComponent(null);
+                setTimeout(() => setActiveComponent('calendar'), 100);
+              }
+            }}
           />
         </div>
       </div>
