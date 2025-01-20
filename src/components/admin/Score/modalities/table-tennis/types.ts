@@ -5,6 +5,7 @@ export interface TableTennisGame extends Omit<Game, 'highlights'> {
   config: TableTennisConfig
   highlights: TableTennisEvent[]
   details: TableTennisDetails
+  winner?: 'A' | 'B'
 }
 
 export interface TableTennisSet extends GameSet {

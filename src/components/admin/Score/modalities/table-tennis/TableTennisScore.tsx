@@ -9,6 +9,7 @@ import { TableTennisPoints } from './components/TableTennisPoints'
 import { TableTennisTimeouts } from './components/TableTennisTimeouts'
 import { TableTennisHighlights } from './components/TableTennisHighlights'
 import GameTimer from '../../GameTimer'
+import TableTennisConfig from './components/TableTennisConfig'
 
 interface TableTennisScoreProps {
   game: TableTennisGame
@@ -91,10 +92,10 @@ const TableTennisScore = ({ game, onClose, onUpdateGame }: TableTennisScoreProps
           .from('game_configs')
           .insert([{
             game_id: game.id,
-            total_sets: 7,
-            points_per_set: 11,
-            min_difference: 2,
-            max_timeouts: 1
+            total_sets: game.config?.total_sets || 5,
+            points_per_set: game.config?.points_per_set || 11,
+            min_difference: game.config?.min_difference || 2,
+            max_timeouts: game.config?.max_timeouts || 1
           }])
           .select()
           .single()
@@ -138,8 +139,35 @@ const TableTennisScore = ({ game, onClose, onUpdateGame }: TableTennisScoreProps
     onUpdateGame({ ...game, game_time: time })
   }
 
-  const handlePeriodChange = (period: 'not_started' | 'in_progress' | 'finished') => {
-    onUpdateGame({ ...game, period })
+  const handlePeriodChange = async (period: 'not_started' | 'in_progress' | 'finished') => {
+    try {
+      setLoading(true)
+      
+      // Atualizar o status do jogo no banco de dados
+      const { error } = await supabase
+        .from('games')
+        .update({
+          period,
+          status: period === 'finished' ? 'finished' : period === 'in_progress' ? 'live' : 'scheduled'
+        })
+        .eq('id', game.id)
+
+      if (error) throw error
+
+      // Atualizar o estado local
+      onUpdateGame({ 
+        ...game, 
+        period,
+        status: period === 'finished' ? 'finished' : period === 'in_progress' ? 'live' : 'scheduled'
+      })
+
+      toast.success(`Status do jogo alterado para: ${period}`)
+    } catch (error) {
+      console.error('Erro ao atualizar status do jogo:', error)
+      toast.error('Erro ao atualizar status do jogo')
+    } finally {
+      setLoading(false)
+    }
   }
 
   if (loading) {
@@ -176,15 +204,18 @@ const TableTennisScore = ({ game, onClose, onUpdateGame }: TableTennisScoreProps
               {game.team_a_name} vs {game.team_b_name}
             </p>
           </div>
-          <button
-            onClick={(e) => {
-              e.stopPropagation()
-              onClose()
-            }}
-            className="p-1.5 sm:p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
-          >
-            <X className="h-5 w-5 sm:h-6 sm:w-6 text-gray-500 dark:text-gray-400" />
-          </button>
+          <div className="flex items-center gap-2">
+            <TableTennisConfig game={game} onUpdateGame={onUpdateGame} />
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onClose()
+              }}
+              className="p-1.5 sm:p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
+            >
+              <X className="h-5 w-5 sm:h-6 sm:w-6 text-gray-500 dark:text-gray-400" />
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:gap-6">

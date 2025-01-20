@@ -1,3 +1,5 @@
+import type { TableTennisGame } from '../../admin/Score/modalities/table-tennis/types'
+
 export interface GameEvent {
   created_at: string
   player_id: number
@@ -51,26 +53,28 @@ export interface TableTennisGameData {
   server: 'A' | 'B'
 }
 
-export interface Game {
+export interface BaseGame {
   id: number
   sport: string
   category: string
-  team_a: string
-  team_b: string
+  team_a: number
+  team_b: number
   score_a: number
   score_b: number
   date: string
   time: string
   game_time: string
-  period: string
+  period: 'not_started' | 'in_progress' | 'finished'
   location: string
   status: 'scheduled' | 'live' | 'finished'
   team_a_name: string
   team_b_name: string
-  highlights: Highlight[]
-  config: GameConfig
-  volleyball_data?: VolleyballGameData
+  highlights: any[]
+}
+
+export interface Game extends BaseGame {
   table_tennis_data?: TableTennisGameData
+  config: GameConfig
 }
 
 export interface Player {

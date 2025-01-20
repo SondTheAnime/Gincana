@@ -4,7 +4,8 @@ import { supabase } from '../../../lib/supabase';
 import { toast } from 'react-toastify';
 import { Game } from './types';
 import { VolleyGame } from './components/VolleyGame/VolleyGame';
-import { TableTennisGame } from './components/TableTennisGame';
+import type { TableTennisGame } from '../../admin/Score/modalities/table-tennis/types';
+import TableTennisLiveGame from './components/TableTennisLiveGame'
 
 const LiveGames = () => {
   const [games, setGames] = useState<Game[]>([]);
@@ -375,12 +376,8 @@ const LiveGames = () => {
           />
         );
       case 'Tênis de Mesa':
-    return (
-          <TableTennisGame
-            key={game.id}
-            game={game}
-            onClick={() => setSelectedGameId(game.id)}
-          />
+        return (
+          <TableTennisLiveGame game={game as unknown as TableTennisGame} />
         );
     }
   };
@@ -426,7 +423,17 @@ const LiveGames = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {games.map(game => renderGame(game))}
+          {games.map((game) => (
+            <div key={game.id} className="w-full">
+              {game.sport === 'Tênis de Mesa' ? (
+                <TableTennisLiveGame game={game as unknown as TableTennisGame} />
+              ) : (
+                <div className="bg-gray-800 rounded-lg p-4 shadow-lg">
+                  {renderGame(game)}
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       )}
     </div>

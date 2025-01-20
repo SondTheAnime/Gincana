@@ -36,9 +36,15 @@ export const TableTennisPoints = ({ game, onUpdateGame }: TableTennisPointsProps
       const pointsToWin = game.config.points_per_set
       const minDifference = game.config.min_difference
 
-      if (newScoreA >= pointsToWin && newScoreA - newScoreB >= minDifference) {
+      if (
+        (newScoreA === pointsToWin && newScoreA - newScoreB >= minDifference) ||
+        (newScoreA > pointsToWin && newScoreA - newScoreB >= minDifference)
+      ) {
         winner = 'A'
-      } else if (newScoreB >= pointsToWin && newScoreB - newScoreA >= minDifference) {
+      } else if (
+        (newScoreB === pointsToWin && newScoreB - newScoreA >= minDifference) ||
+        (newScoreB > pointsToWin && newScoreB - newScoreA >= minDifference)
+      ) {
         winner = 'B'
       }
 
@@ -61,17 +67,94 @@ export const TableTennisPoints = ({ game, onUpdateGame }: TableTennisPointsProps
         const setsA = game.sets.filter(s => s.winner === 'A').length + (winner === 'A' ? 1 : 0)
         const setsB = game.sets.filter(s => s.winner === 'B').length + (winner === 'B' ? 1 : 0)
 
-        // Atualizar o placar geral do jogo
+        // Calcular sets restantes
+        const setsRestantes = game.config.total_sets - game.sets.filter(s => s.status === 'finished').length
+        
+        // Verificar se ainda é possível vencer
+        const setsNecessariosParaVencer = Math.ceil(game.config.total_sets / 2)
+        const timeAPodeVencer = setsA + setsRestantes >= setsNecessariosParaVencer
+        const timeBPodeVencer = setsB + setsRestantes >= setsNecessariosParaVencer
+
+        // Definir se o jogo acabou
+        const isGameFinished = Math.max(setsA, setsB) > game.config.total_sets / 2 || 
+                             (!timeAPodeVencer || !timeBPodeVencer)
+
+        // Definir vencedor se o jogo acabou por impossibilidade matemática
+        const gameWinner = isGameFinished ? (setsA > setsB ? 'A' : 'B') : undefined
+        const newGameStatus = isGameFinished ? 'finished' : 'live'
+
+        // Atualizar o placar geral e status do jogo
         const { error: gameError } = await supabase
           .from('games')
           .update({
             score_a: setsA,
             score_b: setsB,
-            status: Math.max(setsA, setsB) > game.config.total_sets / 2 ? 'finished' : 'in_progress'
+            status: newGameStatus,
+            period: isGameFinished ? 'finished' : 'in_progress',
+            winner: gameWinner
           })
           .eq('id', game.id)
 
         if (gameError) throw gameError
+
+        // Se o jogo não acabou, avançar para o próximo set
+        if (!isGameFinished) {
+          const nextSetNumber = currentSet.set_number + 1
+          const nextSet = game.sets.find(s => s.set_number === nextSetNumber)
+
+          if (nextSet) {
+            // Atualizar o set atual nos detalhes do jogo
+            const { error: detailsError } = await supabase
+              .from('table_tennis_game_details')
+              .update({
+                current_set: nextSetNumber
+              })
+              .eq('game_id', game.id)
+
+            if (detailsError) throw detailsError
+
+            // Atualizar o estado local
+            onUpdateGame({
+              ...game,
+              status: newGameStatus,
+              period: 'in_progress',
+              score_a: setsA,
+              score_b: setsB,
+              details: {
+                ...game.details,
+                current_set: nextSetNumber
+              }
+            })
+
+            if (!timeAPodeVencer || !timeBPodeVencer) {
+              toast.success(`Jogo finalizado! ${gameWinner === 'A' ? game.team_a_name : game.team_b_name} venceu por impossibilidade matemática do adversário.`)
+            }
+          }
+        } else {
+          // Atualizar o estado local quando o jogo acabar
+          onUpdateGame({
+            ...game,
+            status: newGameStatus,
+            period: 'finished',
+            score_a: setsA,
+            score_b: setsB,
+            winner: gameWinner
+          })
+
+          if (!timeAPodeVencer || !timeBPodeVencer) {
+            toast.success(`Jogo finalizado! ${gameWinner === 'A' ? game.team_a_name : game.team_b_name} venceu por impossibilidade matemática do adversário.`)
+          }
+        }
+      } else {
+        // Atualizar o estado local quando não houver vencedor
+        onUpdateGame({
+          ...game,
+          sets: game.sets.map(s => 
+            s.id === currentSet.id 
+              ? { ...s, score_a: newScoreA, score_b: newScoreB }
+              : s
+          )
+        })
       }
 
       // Criar evento de ponto
@@ -86,16 +169,6 @@ export const TableTennisPoints = ({ game, onUpdateGame }: TableTennisPointsProps
 
       if (eventError) throw eventError
 
-      // Atualizar o estado local do jogo
-      onUpdateGame({
-        ...game,
-        sets: game.sets.map(s => 
-          s.id === currentSet.id 
-            ? { ...s, score_a: newScoreA, score_b: newScoreB }
-            : s
-        )
-      })
-
     } catch (error) {
       console.error('Erro ao atualizar pontos:', error)
       toast.error('Erro ao atualizar pontos')
@@ -108,9 +181,54 @@ export const TableTennisPoints = ({ game, onUpdateGame }: TableTennisPointsProps
 
   return (
     <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
-      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-        Pontuação Atual - Set {currentSet.set_number}
-      </h3>
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+          Pontuação Atual - Set {currentSet.set_number}
+        </h3>
+
+        <select
+          value={currentSet.set_number}
+          onChange={async (e) => {
+            try {
+              setLoading(true)
+              const newSetNumber = Number(e.target.value)
+
+              // Atualizar o set atual nos detalhes do jogo
+              const { error: detailsError } = await supabase
+                .from('table_tennis_game_details')
+                .update({
+                  current_set: newSetNumber
+                })
+                .eq('game_id', game.id)
+
+              if (detailsError) throw detailsError
+
+              // Atualizar o estado local
+              onUpdateGame({
+                ...game,
+                details: {
+                  ...game.details,
+                  current_set: newSetNumber
+                }
+              })
+
+              toast.success(`Alterado para o Set ${newSetNumber}`)
+            } catch (error) {
+              console.error('Erro ao mudar de set:', error)
+              toast.error('Erro ao mudar de set')
+            } finally {
+              setLoading(false)
+            }
+          }}
+          className="text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 py-1 px-2 focus:outline-none focus:ring-2 focus:ring-red-500 dark:text-white"
+        >
+          {game.sets.map((set) => (
+            <option key={set.set_number} value={set.set_number}>
+              Set {set.set_number} {set.status === 'finished' ? '(Finalizado)' : ''}
+            </option>
+          ))}
+        </select>
+      </div>
 
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
