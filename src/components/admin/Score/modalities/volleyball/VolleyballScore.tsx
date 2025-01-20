@@ -23,7 +23,7 @@ const VolleyballScore = ({ game, onClose, onUpdateGame }: VolleyballScoreProps) 
   const [activeTab, setActiveTab] = useState<'game' | 'stats'>('game')
 
   useEffect(() => {
-    const fetchGameDetails = async () => {
+    async function fetchGameDetails() {
       try {
         // Buscar detalhes do jogo de vôlei
         let { data: details, error: detailsError } = await supabase
@@ -116,7 +116,7 @@ const VolleyballScore = ({ game, onClose, onUpdateGame }: VolleyballScoreProps) 
     }
 
     fetchGameDetails()
-  }, [game.id])
+  }, [game, onUpdateGame])
 
   const handleTimeUpdate = (time: string) => {
     onUpdateGame({ ...game, game_time: time })

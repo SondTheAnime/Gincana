@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 type InscricaoTimeRequest = {
   id: number
   nomeTecnico: string
+  nomeTime: string
   auxiliarTecnico?: string | null
   turma: string
   modalidade: string
@@ -23,6 +24,7 @@ type InscricaoJogadorRequest = {
   numeroCamisa: string
   modalidade: string
   team_id: number
+  nomeTime: string
   posicao?: string
   empunhadura?: string
   estiloJogo?: string
@@ -59,7 +61,12 @@ const InscricaoRequests = () => {
       // Buscar solicitações de jogadores
       const { data: playerData, error: playerError } = await supabase
         .from('player_requests')
-        .select('*')
+        .select(`
+          *,
+          teams!inner (
+            name
+          )
+        `)
         .order('created_at', { ascending: false })
 
       if (playerError) throw playerError
@@ -68,6 +75,7 @@ const InscricaoRequests = () => {
       setTimeRequests(timeData.map(item => ({
         id: item.id,
         nomeTecnico: item.nome_tecnico,
+        nomeTime: item.nome_time,
         auxiliarTecnico: item.auxiliar_tecnico,
         turma: item.turma,
         modalidade: item.modalidade,
@@ -85,6 +93,7 @@ const InscricaoRequests = () => {
         numeroCamisa: item.numero_camisa,
         modalidade: item.modalidade,
         team_id: item.team_id,
+        nomeTime: item.teams.name,
         posicao: item.posicao,
         empunhadura: item.empunhadura,
         estiloJogo: item.estilo_jogo,
@@ -136,7 +145,7 @@ const InscricaoRequests = () => {
         const { error: createError } = await supabase
           .from('teams')
           .insert({
-            name: `${request.turma}`,
+            name: request.nomeTime,
             modality: request.modalidade,
             category: request.genero,
             turma: request.turma,
@@ -422,8 +431,11 @@ const InscricaoRequests = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                        {request.nomeTecnico}
+                        {request.nomeTime}
                       </h3>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        Técnico: {request.nomeTecnico}
+                      </p>
                       <p className="text-sm text-gray-500 dark:text-gray-400">
                         {request.modalidade} - {request.turma} - {request.genero}
                       </p>
@@ -573,6 +585,9 @@ const InscricaoRequests = () => {
                       <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                         {request.nomeJogador}
                       </h3>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        Time: {request.nomeTime}
+                      </p>
                       <p className="text-sm text-gray-500 dark:text-gray-400">
                         {request.modalidade} - {request.turma} - Camisa #{request.numeroCamisa}
                       </p>

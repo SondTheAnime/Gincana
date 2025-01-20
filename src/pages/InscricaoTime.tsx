@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 
 const formSchema = z.object({
   nomeTecnico: z.string().min(3, 'Nome deve ter no mínimo 3 caracteres'),
+  nomeTime: z.string().min(2, 'Nome do time deve ter no mínimo 2 caracteres'),
   auxiliarTecnico: z.string().optional(),
   turma: z.string().refine(val => ['Informática 2023', 'Automação 2023'].includes(val), 'Turma inválida'),
   modalidade: z.string().refine(val => ['Tênis de Mesa', 'Vôlei'].includes(val), 'Modalidade inválida'),
@@ -24,6 +25,7 @@ const InscricaoTime = () => {
   const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({})
   const [formData, setFormData] = useState<FormData>({
     nomeTecnico: '',
+    nomeTime: '',
     auxiliarTecnico: '',
     turma: '',
     modalidade: '',
@@ -74,6 +76,7 @@ const InscricaoTime = () => {
         .insert([
           {
             nome_tecnico: formData.nomeTecnico,
+            nome_time: formData.nomeTime,
             auxiliar_tecnico: formData.auxiliarTecnico || null,
             turma: formData.turma,
             modalidade: formData.modalidade,
@@ -91,6 +94,7 @@ const InscricaoTime = () => {
         // Limpar formulário
         setFormData({
           nomeTecnico: '',
+          nomeTime: '',
           auxiliarTecnico: '',
           turma: '',
           modalidade: '',
@@ -206,6 +210,27 @@ const InscricaoTime = () => {
             </h1>
 
             <form onSubmit={handleSubmit} className="space-y-6">
+            <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
+                  Nome do Time
+                </label>
+                <input
+                  type="text"
+                  name="nomeTime"
+                  value={formData.nomeTime}
+                  onChange={handleInputChange}
+                  className={`
+                    w-full px-4 py-2 rounded-lg border
+                    focus:ring-2 focus:ring-blue-500 focus:border-transparent
+                    dark:bg-gray-700 dark:border-gray-600 dark:text-white
+                    ${errors.nomeTime ? 'border-red-500' : 'border-gray-300'}
+                  `}
+                />
+                {errors.nomeTime && (
+                  <p className="mt-1 text-sm text-red-500">{errors.nomeTime}</p>
+                )}
+              </div>
+              
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
                   Nome do Técnico
