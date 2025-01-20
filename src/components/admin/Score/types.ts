@@ -17,12 +17,14 @@ export interface Game {
   category: string
   team_a: number
   team_b: number
+  player_a?: number
+  player_b?: number
   score_a: number
   score_b: number
   date: string
   time: string
-  game_time?: string
-  period?: string
+  game_time: string
+  period: 'not_started' | 'in_progress' | 'finished'
   location: string
   status: GameStatus
   team_a_name: string
