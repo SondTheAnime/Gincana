@@ -24,7 +24,6 @@ type InscricaoJogadorRequest = {
   numeroCamisa: string
   modalidade: string
   team_id: number
-  nomeTime: string
   posicao?: string
   empunhadura?: string
   estiloJogo?: string
@@ -61,12 +60,7 @@ const InscricaoRequests = () => {
       // Buscar solicitações de jogadores
       const { data: playerData, error: playerError } = await supabase
         .from('player_requests')
-        .select(`
-          *,
-          teams!inner (
-            name
-          )
-        `)
+        .select('*')
         .order('created_at', { ascending: false })
 
       if (playerError) throw playerError
@@ -93,7 +87,6 @@ const InscricaoRequests = () => {
         numeroCamisa: item.numero_camisa,
         modalidade: item.modalidade,
         team_id: item.team_id,
-        nomeTime: item.teams.name,
         posicao: item.posicao,
         empunhadura: item.empunhadura,
         estiloJogo: item.estilo_jogo,
@@ -585,9 +578,6 @@ const InscricaoRequests = () => {
                       <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                         {request.nomeJogador}
                       </h3>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        Time: {request.nomeTime}
-                      </p>
                       <p className="text-sm text-gray-500 dark:text-gray-400">
                         {request.modalidade} - {request.turma} - Camisa #{request.numeroCamisa}
                       </p>

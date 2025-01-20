@@ -199,7 +199,7 @@ const ManageCalendar = () => {
         .update({
           status: 'live' as GameStatus,
           game_time: '00:00',
-          period: '1º Tempo'
+          period: 'in_progress'
         })
         .eq('id', match.id);
 

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import { X } from 'lucide-react'
 import { supabase } from '../../../../../lib/supabase'
@@ -21,102 +21,123 @@ interface VolleyballScoreProps {
 const VolleyballScore = ({ game, onClose, onUpdateGame }: VolleyballScoreProps) => {
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'game' | 'stats'>('game')
+  const [lastFetch, setLastFetch] = useState(0)
 
-  useEffect(() => {
-    async function fetchGameDetails() {
-      try {
-        // Buscar detalhes do jogo de vôlei
-        let { data: details, error: detailsError } = await supabase
-          .from('volleyball_game_details')
-          .select('*')
-          .eq('game_id', game.id)
-          .single()
-
-        if (detailsError) throw detailsError
-
-        // Buscar configurações do jogo
-        let { data: config, error: configError } = await supabase
-          .from('game_configs')
-          .select('*')
-          .eq('game_id', game.id)
-          .single()
-
-        if (configError) throw configError
-
-        // Buscar sets do jogo
-        const { data: sets, error: setsError } = await supabase
-          .from('game_sets')
-          .select('*')
-          .eq('game_id', game.id)
-          .order('set_number')
-
-        if (setsError) throw setsError
-
-        // Buscar eventos do jogo
-        const { data: events, error: eventsError } = await supabase
-          .from('game_events')
-          .select('*')
-          .eq('game_id', game.id)
-          .order('created_at', { ascending: false })
-
-        if (eventsError) throw eventsError
-
-        // Se não houver detalhes, criar
-        if (!details) {
-          const { data: newDetails, error: createDetailsError } = await supabase
-            .from('volleyball_game_details')
-            .insert([{
-              game_id: game.id,
-              current_set: 1,
-              points_a: 0,
-              points_b: 0,
-              timeouts_a: 0,
-              timeouts_b: 0
-            }])
-            .select()
-            .single()
-
-          if (createDetailsError) throw createDetailsError
-          details = newDetails
-        }
-
-        // Se não houver configuração, criar
-        if (!config) {
-          const { data: newConfig, error: createConfigError } = await supabase
-            .from('game_configs')
-            .insert([{
-              game_id: game.id,
-              total_sets: 3,
-              points_per_set: 25,
-              points_last_set: 15,
-              min_difference: 2,
-              max_timeouts: 2,
-              max_substitutions: 6
-            }])
-            .select()
-            .single()
-
-          if (createConfigError) throw createConfigError
-          config = newConfig
-        }
-
-        onUpdateGame({
-          ...game,
-          details,
-          config,
-          sets: sets || [],
-          highlights: events || []
-        })
-      } catch (error) {
-        console.error('Erro ao carregar detalhes do jogo:', error)
-        toast.error('Erro ao carregar detalhes do jogo. Tente novamente.')
-      } finally {
-        setLoading(false)
-      }
+  const fetchGameDetails = useCallback(async () => {
+    const now = Date.now()
+    // Limitar requisições a uma a cada 2 segundos
+    if (now - lastFetch < 2000) {
+      return
     }
 
+    setLastFetch(now)
+
+    try {
+      // Buscar detalhes do jogo de vôlei
+      let { data: details, error: detailsError } = await supabase
+        .from('volleyball_game_details')
+        .select('*')
+        .eq('game_id', game.id)
+        .single()
+
+      if (detailsError) throw detailsError
+
+      // Buscar configurações do jogo
+      let { data: config, error: configError } = await supabase
+        .from('game_configs')
+        .select('*')
+        .eq('game_id', game.id)
+        .single()
+
+      if (configError) throw configError
+
+      // Buscar sets do jogo
+      const { data: sets, error: setsError } = await supabase
+        .from('game_sets')
+        .select('*')
+        .eq('game_id', game.id)
+        .order('set_number')
+
+      if (setsError) throw setsError
+
+      // Buscar eventos do jogo
+      const { data: events, error: eventsError } = await supabase
+        .from('game_events')
+        .select('*')
+        .eq('game_id', game.id)
+        .order('created_at', { ascending: false })
+
+      if (eventsError) throw eventsError
+
+      // Se não houver detalhes, criar
+      if (!details) {
+        const { data: newDetails, error: createDetailsError } = await supabase
+          .from('volleyball_game_details')
+          .insert([{
+            game_id: game.id,
+            current_set: 1,
+            points_a: 0,
+            points_b: 0,
+            timeouts_a: 0,
+            timeouts_b: 0
+          }])
+          .select()
+          .single()
+
+        if (createDetailsError) throw createDetailsError
+        details = newDetails
+      }
+
+      // Se não houver configuração, criar
+      if (!config) {
+        const { data: newConfig, error: createConfigError } = await supabase
+          .from('game_configs')
+          .insert([{
+            game_id: game.id,
+            total_sets: 3,
+            points_per_set: 25,
+            points_last_set: 15,
+            min_difference: 2,
+            max_timeouts: 2,
+            max_substitutions: 6
+          }])
+          .select()
+          .single()
+
+        if (createConfigError) throw createConfigError
+        config = newConfig
+      }
+
+      onUpdateGame({
+        ...game,
+        details,
+        config,
+        sets: sets || [],
+        highlights: events || []
+      })
+    } catch (error) {
+      console.error('Erro ao carregar detalhes do jogo:', error)
+      toast.error('Erro ao carregar detalhes do jogo. Tente novamente.')
+    } finally {
+      setLoading(false)
+    }
+  }, [game, onUpdateGame, lastFetch])
+
+  useEffect(() => {
     fetchGameDetails()
-  }, [game, onUpdateGame])
+
+    // Atualizar a cada 5 segundos se o jogo estiver em andamento
+    let interval: NodeJS.Timeout
+    if (game.status === 'live') {
+      interval = setInterval(fetchGameDetails, 5000)
+    }
+
+    return () => {
+      if (interval) {
+        clearInterval(interval)
+      }
+    }
+  }, [fetchGameDetails, game.status])
 
   const handleTimeUpdate = (time: string) => {
     onUpdateGame({ ...game, game_time: time })
@@ -147,7 +168,10 @@ const VolleyballScore = ({ game, onClose, onUpdateGame }: VolleyballScoreProps) 
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
     >
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-4xl p-3 sm:p-6 max-h-[90vh] overflow-y-auto">
+      <div 
+        className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-4xl p-3 sm:p-6 max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex justify-between items-start mb-4 sm:mb-6">
           <div>
             <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
@@ -160,7 +184,10 @@ const VolleyballScore = ({ game, onClose, onUpdateGame }: VolleyballScoreProps) 
           <div className="flex items-center gap-2">
             <VolleyballConfig game={game} onUpdateGame={onUpdateGame} />
             <button
-              onClick={onClose}
+              onClick={(e) => {
+                e.stopPropagation()
+                onClose()
+              }}
               className="p-1.5 sm:p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
             >
               <X className="h-5 w-5 sm:h-6 sm:w-6 text-gray-500 dark:text-gray-400" />

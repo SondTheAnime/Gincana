@@ -111,6 +111,52 @@ const VolleyballHighlights = ({ game, onUpdateGame }: VolleyballHighlightsProps)
       const currentSet = game.sets.find(s => s.set_number === game.details.current_set)
       if (!currentSet) throw new Error('Set atual não encontrado')
 
+      // Atualizar o placar do set atual
+      const newScoreA = selectedTeam === 'A' ? currentSet.score_a + 1 : currentSet.score_a
+      const newScoreB = selectedTeam === 'B' ? currentSet.score_b + 1 : currentSet.score_b
+
+      // Verificar se algum time venceu o set
+      let winner = null
+      const pointsToWin = game.config.points_per_set
+      const minDifference = game.config.min_difference
+
+      if (newScoreA >= pointsToWin && newScoreA - newScoreB >= minDifference) {
+        winner = 'A'
+      } else if (newScoreB >= pointsToWin && newScoreB - newScoreA >= minDifference) {
+        winner = 'B'
+      }
+
+      // Atualizar o set
+      const { error: setError } = await supabase
+        .from('game_sets')
+        .update({
+          score_a: newScoreA,
+          score_b: newScoreB,
+          status: winner ? 'finished' : 'in_progress',
+          winner: winner || undefined
+        })
+        .eq('id', currentSet.id)
+
+      if (setError) throw setError
+
+      // Se o set foi finalizado, atualizar o placar geral do jogo
+      if (winner) {
+        // Contar sets vencidos por cada time
+        const setsA = game.sets.filter(s => s.winner === 'A').length + (winner === 'A' ? 1 : 0)
+        const setsB = game.sets.filter(s => s.winner === 'B').length + (winner === 'B' ? 1 : 0)
+
+        // Atualizar o placar geral do jogo
+        const { error: gameError } = await supabase
+          .from('games')
+          .update({
+            score_a: setsA,
+            score_b: setsB
+          })
+          .eq('id', game.id)
+
+        if (gameError) throw gameError
+      }
+
       // Criar o evento
       const newEvent: Omit<GameEvent, 'id' | 'created_at' | 'updated_at'> = {
         game_id: game.id,
@@ -148,19 +194,14 @@ const VolleyballHighlights = ({ game, onUpdateGame }: VolleyballHighlightsProps)
 
         if (eventError) throw eventError
 
-        // Buscar todos os highlights atualizados
-        const { data: updatedHighlights, error: highlightsError } = await supabase
-          .from('game_events')
-          .select('*')
-          .eq('game_id', game.id)
-          .order('created_at', { ascending: false })
-
-        if (highlightsError) throw highlightsError
-
-        // Atualizar o jogo com os highlights mais recentes
+        // Atualizar o estado local do jogo
         onUpdateGame({
           ...game,
-          highlights: updatedHighlights || []
+          sets: game.sets.map(s => 
+            s.id === currentSet.id 
+              ? { ...s, score_a: newScoreA, score_b: newScoreB }
+              : s
+          )
         })
 
         // Fechar o modal

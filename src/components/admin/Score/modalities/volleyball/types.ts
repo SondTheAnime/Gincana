@@ -56,6 +56,7 @@ export interface VolleyballGame {
   team_b_name: string
   period: 'not_started' | 'in_progress' | 'finished'
   game_time: string
+  status: 'scheduled' | 'live' | 'finished'
   details: VolleyballGameDetails
   config: VolleyballGameConfig
   sets: VolleyballSet[]

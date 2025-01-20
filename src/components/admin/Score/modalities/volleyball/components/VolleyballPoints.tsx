@@ -34,6 +34,26 @@ const VolleyballPoints = ({ game, onUpdateGame }: VolleyballPointsProps) => {
 
       if (setError) throw setError
 
+      // Atualizar status do jogo para 'live' e período para 'in_progress' se for o primeiro ponto
+      if (game.period === 'not_started') {
+        const { error: gameError } = await supabase
+          .from('games')
+          .update({
+            status: 'live',
+            period: 'in_progress'
+          })
+          .eq('id', game.id)
+
+        if (gameError) throw gameError
+
+        // Atualizar estado local
+        onUpdateGame({
+          ...game,
+          status: 'live',
+          period: 'in_progress'
+        })
+      }
+
       // Verificar se o set terminou
       const teamAPoints = team === 'A' ? newPoints : currentSet.score_a
       const teamBPoints = team === 'B' ? newPoints : currentSet.score_b
@@ -53,6 +73,22 @@ const VolleyballPoints = ({ game, onUpdateGame }: VolleyballPointsProps) => {
           .eq('id', currentSet.id)
 
         if (finishError) throw finishError
+
+        // Contar sets vencidos por cada time
+        const setsA = game.sets.filter(s => s.winner === 'A').length + (winner === 'A' ? 1 : 0)
+        const setsB = game.sets.filter(s => s.winner === 'B').length + (winner === 'B' ? 1 : 0)
+
+        // Atualizar placar geral do jogo
+        const { error: gameError } = await supabase
+          .from('games')
+          .update({
+            score_a: setsA,
+            score_b: setsB,
+            status: 'live'
+          })
+          .eq('id', game.id)
+
+        if (gameError) throw gameError
 
         // Atualizar detalhes do jogo
         const nextSet = game.sets.find(s => s.set_number === currentSet.set_number + 1)
