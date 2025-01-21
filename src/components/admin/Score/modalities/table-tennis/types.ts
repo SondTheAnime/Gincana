@@ -18,6 +18,7 @@ export interface TableTennisSet extends GameSet {
 export interface TableTennisConfig {
   total_sets: number
   points_per_set: number
+  points_last_set: number
   min_difference: number
   max_timeouts: number
 }
@@ -30,6 +31,14 @@ export interface TableTennisDetails {
   points_b: number
   timeouts_a: number
   timeouts_b: number
+  server: 'A' | 'B'
+  serves_left: number
+  service_points_a: number
+  service_points_b: number
+  return_points_a: number
+  return_points_b: number
+  errors_a: number
+  errors_b: number
   created_at?: string
   updated_at?: string
 }

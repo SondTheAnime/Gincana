@@ -187,6 +187,23 @@ export function useCalendar() {
     }
   }, [fetchMatches])
 
+  const deleteMatch = useCallback(async (match: Match) => {
+    try {
+      const { error } = await supabase
+        .from('games')
+        .delete()
+        .eq('id', match.id)
+
+      if (error) throw error
+
+      toast.success('Jogo excluído com sucesso!')
+      fetchMatches()
+    } catch (error) {
+      console.error('Erro ao excluir jogo:', error)
+      toast.error('Erro ao excluir jogo. Tente novamente.')
+    }
+  }, [fetchMatches])
+
   useEffect(() => {
     fetchMatches()
   }, [fetchMatches])
@@ -213,5 +230,6 @@ export function useCalendar() {
     startMatch,
     updateMatch,
     fetchPlayers,
+    deleteMatch,
   }
 } 

@@ -1,4 +1,3 @@
-
 export interface GameEvent {
   created_at: string
   player_id: number
@@ -50,12 +49,18 @@ export interface TableTennisGameData {
   points_b: number
   serves_left: number
   server: 'A' | 'B'
+  service_points_a: number
+  service_points_b: number
+  return_points_a: number
+  return_points_b: number
+  errors_a: number
+  errors_b: number
 }
 
 export interface BaseGame {
   id: number
   sport: string
-  category: string
+  category: 'masculino' | 'feminino' | 'misto'
   team_a: number
   team_b: number
   score_a: number
@@ -68,7 +73,7 @@ export interface BaseGame {
   status: 'scheduled' | 'live' | 'finished'
   team_a_name: string
   team_b_name: string
-  highlights: any[]
+  highlights: Highlight[]
 }
 
 export interface Game extends BaseGame {

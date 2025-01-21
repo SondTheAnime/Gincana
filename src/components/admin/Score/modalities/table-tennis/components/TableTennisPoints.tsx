@@ -33,7 +33,8 @@ export const TableTennisPoints = ({ game, onUpdateGame }: TableTennisPointsProps
 
       // Verificar se algum time venceu o set
       let winner = null
-      const pointsToWin = game.config.points_per_set
+      const isLastSet = currentSet.set_number === game.config.total_sets
+      const pointsToWin = isLastSet ? game.config.points_last_set : game.config.points_per_set
       const minDifference = game.config.min_difference
 
       if (
@@ -60,6 +61,35 @@ export const TableTennisPoints = ({ game, onUpdateGame }: TableTennisPointsProps
         .eq('id', currentSet.id)
 
       if (setError) throw setError
+
+      // Atualizar os detalhes do jogo de tênis de mesa
+      const newServesLeft = game.details.serves_left - 1
+      const shouldChangeServer = newServesLeft <= 0
+      const newServer = shouldChangeServer ? (game.details.server === 'A' ? 'B' : 'A') : game.details.server
+
+      const { error: detailsError } = await supabase
+        .from('table_tennis_game_details')
+        .update({
+          points_a: newScoreA,
+          points_b: newScoreB,
+          server: newServer,
+          serves_left: shouldChangeServer ? 2 : newServesLeft,
+          ...(team === 'A' && game.details.server === 'A' 
+            ? { service_points_a: (game.details.service_points_a || 0) + (action === 'add' ? 1 : -1) }
+            : {}),
+          ...(team === 'B' && game.details.server === 'B'
+            ? { service_points_b: (game.details.service_points_b || 0) + (action === 'add' ? 1 : -1) }
+            : {}),
+          ...(team === 'A' && game.details.server === 'B'
+            ? { return_points_a: (game.details.return_points_a || 0) + (action === 'add' ? 1 : -1) }
+            : {}),
+          ...(team === 'B' && game.details.server === 'A'
+            ? { return_points_b: (game.details.return_points_b || 0) + (action === 'add' ? 1 : -1) }
+            : {})
+        })
+        .eq('id', game.details.id)
+
+      if (detailsError) throw detailsError
 
       // Se o set foi finalizado, atualizar o placar geral do jogo
       if (winner) {
@@ -109,7 +139,7 @@ export const TableTennisPoints = ({ game, onUpdateGame }: TableTennisPointsProps
               .update({
                 current_set: nextSetNumber
               })
-              .eq('game_id', game.id)
+              .eq('id', game.details.id)
 
             if (detailsError) throw detailsError
 
@@ -199,7 +229,7 @@ export const TableTennisPoints = ({ game, onUpdateGame }: TableTennisPointsProps
                 .update({
                   current_set: newSetNumber
                 })
-                .eq('game_id', game.id)
+                .eq('id', game.details.id)
 
               if (detailsError) throw detailsError
 

@@ -21,6 +21,7 @@ export function ManageCalendar() {
     startMatch,
     updateMatch,
     fetchPlayers,
+    deleteMatch,
   } = useCalendar();
 
   const [editingMatch, setEditingMatch] = useState<Match | null>(null);
@@ -56,6 +57,7 @@ export function ManageCalendar() {
                     match={match}
                     onEdit={setEditingMatch}
                     onStart={startMatch}
+                    onDelete={deleteMatch}
                   />
                 ))}
               </div>

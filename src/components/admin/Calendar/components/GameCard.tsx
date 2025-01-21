@@ -1,12 +1,13 @@
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { Edit2, MapPin, Play } from 'lucide-react'
+import { Edit2, MapPin, Play, Trash2 } from 'lucide-react'
 import { Match } from '../types'
 
 interface GameCardProps {
   match: Match
   onEdit: (match: Match) => void
   onStart: (match: Match) => void
+  onDelete: (match: Match) => void
 }
 
 const statusColors = {
@@ -23,7 +24,13 @@ const statusLabels = {
   cancelled: 'Cancelado',
 }
 
-export function GameCard({ match, onEdit, onStart }: GameCardProps) {
+export function GameCard({ match, onEdit, onStart, onDelete }: GameCardProps) {
+  const handleDelete = () => {
+    if (window.confirm('Tem certeza que deseja excluir este jogo?')) {
+      onDelete(match)
+    }
+  }
+
   return (
     <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm p-4 border border-gray-200 dark:border-gray-800">
       <div className="flex items-center justify-between mb-4">
@@ -53,6 +60,14 @@ export function GameCard({ match, onEdit, onStart }: GameCardProps) {
             title="Editar partida"
           >
             <Edit2 className="w-4 h-4" />
+          </button>
+
+          <button
+            onClick={handleDelete}
+            className="p-2 text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20 rounded-full transition-colors"
+            title="Excluir partida"
+          >
+            <Trash2 className="w-4 h-4" />
           </button>
         </div>
       </div>

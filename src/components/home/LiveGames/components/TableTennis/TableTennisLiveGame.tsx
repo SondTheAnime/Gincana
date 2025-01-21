@@ -10,6 +10,8 @@ export const TableTennisLiveGame = ({ game }: TableTennisLiveGameProps) => {
   const setsNecessariosParaVencer = Math.ceil((game.config?.total_sets || 0) / 2)
   const setsRestantes = (game.config?.total_sets || 0) - (game.sets?.filter(s => s.status === 'finished').length || 0)
 
+  console.log(game.config);
+  
   return (
     <div className="bg-gray-800 rounded-lg p-4 shadow-lg">
       {/* Cabeçalho */}
@@ -44,12 +46,12 @@ export const TableTennisLiveGame = ({ game }: TableTennisLiveGameProps) => {
 
       {/* Sets */}
       {game.sets && (
-        <div className="bg-gray-700 rounded-lg p-4 mb-4">
+        <div className="bg-gray-700 rounded-lg p-4 mb-3">
           <div className="grid grid-cols-5 gap-2">
             {game.sets.map((set) => (
               <div 
                 key={set.set_number}
-                className={`text-center p-2 rounded ${
+                className={`text-center p-3 rounded ${
                   set.status === 'in_progress' 
                     ? 'bg-blue-500/20 border border-blue-500'
                     : set.status === 'finished'

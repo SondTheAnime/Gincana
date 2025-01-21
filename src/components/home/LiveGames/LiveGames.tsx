@@ -4,8 +4,7 @@ import { supabase } from '../../../lib/supabase';
 import { toast } from 'react-toastify';
 import { Game } from './types';
 import { VolleyGame } from './components/VolleyGame/VolleyGame';
-import type { TableTennisGame } from '../../admin/Score/modalities/table-tennis/types';
-import TableTennisLiveGame from './components/TableTennis/TableTennisLiveGame'
+import { TableTennisGame } from './components/TableTennis/TableTennisGame';
 
 const LiveGames = () => {
   const [games, setGames] = useState<Game[]>([]);
@@ -59,7 +58,13 @@ const LiveGames = () => {
               points_a,
               points_b,
               serves_left,
-              server
+              server,
+              service_points_a,
+              service_points_b,
+              return_points_a,
+              return_points_b,
+              errors_a,
+              errors_b
             ),
             game_sets (
               set_number,
@@ -133,7 +138,13 @@ const LiveGames = () => {
               points_a: 0,
               points_b: 0,
               serves_left: 2,
-              server: 'A' as const
+              server: 'A' as const,
+              service_points_a: 0,
+              service_points_b: 0,
+              return_points_a: 0,
+              return_points_b: 0,
+              errors_a: 0,
+              errors_b: 0
             };
 
             const totalSets = game.game_configs?.[0]?.total_sets || 5;
@@ -152,17 +163,19 @@ const LiveGames = () => {
             };
           }
 
+          console.log('Game configs:', game.game_configs);
+          
           return {
             ...game,
             highlights,
-            config: game.game_configs?.[0] ? {
-              ...game.game_configs[0],
+            config: game.game_configs ? {
+              ...(Array.isArray(game.game_configs) ? game.game_configs[0] : game.game_configs),
               game_id: game.id
             } : {
               id: 0,
               game_id: game.id,
-              total_sets: 0,
-              points_per_set: 0,
+              total_sets: game.sport === 'Tênis de Mesa' ? 5 : 0,
+              points_per_set: game.sport === 'Tênis de Mesa' ? 11 : 0,
               min_difference: 2,
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString()
@@ -243,7 +256,13 @@ const LiveGames = () => {
                   points_a,
                   points_b,
                   serves_left,
-                  server
+                  server,
+                  service_points_a,
+                  service_points_b,
+                  return_points_a,
+                  return_points_b,
+                  errors_a,
+                  errors_b
                 ),
                 game_sets (
                   set_number,
@@ -301,14 +320,14 @@ const LiveGames = () => {
             const newGame = {
               ...gameData,
               highlights,
-              config: gameData.game_configs?.[0] ? {
-                ...gameData.game_configs[0],
+              config: gameData.game_configs ? {
+                ...(Array.isArray(gameData.game_configs) ? gameData.game_configs[0] : gameData.game_configs),
                 game_id: gameData.id
               } : {
                 id: 0,
                 game_id: gameData.id,
-                total_sets: 0,
-                points_per_set: 0,
+                total_sets: gameData.sport === 'Tênis de Mesa' ? 5 : 0,
+                points_per_set: gameData.sport === 'Tênis de Mesa' ? 11 : 0,
                 min_difference: 2,
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString()
@@ -376,8 +395,14 @@ const LiveGames = () => {
         );
       case 'Tênis de Mesa':
         return (
-          <TableTennisLiveGame game={game as unknown as TableTennisGame} />
+          <TableTennisGame
+            key={game.id}
+            game={game}
+            onClick={() => setSelectedGameId(game.id)}
+          />
         );
+      default:
+        return null;
     }
   };
 
@@ -405,7 +430,7 @@ const LiveGames = () => {
             <option value="all">Todas Modalidades</option>
             {sports.map((sport) => (
               <option key={sport} value={sport}>
-          {sport}
+                {sport}
               </option>
             ))}
           </select>
@@ -424,13 +449,7 @@ const LiveGames = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {games.map((game) => (
             <div key={game.id} className="w-full">
-              {game.sport === 'Tênis de Mesa' ? (
-                <TableTennisLiveGame game={game as unknown as TableTennisGame} />
-              ) : (
-                <div className="bg-gray-800 rounded-lg p-4 shadow-lg">
-                  {renderGame(game)}
-                </div>
-              )}
+              {renderGame(game)}
             </div>
           ))}
         </div>
