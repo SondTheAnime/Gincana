@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import CreateGame from './Games/CreateGame';
-import ManageCalendar from './Calendar/ManageCalendar';
+import { ManageCalendar } from './Calendar/ManageCalendar';
 import ManageScore from './Score/ManageScore';
 import ManageModalities from './Modalities/ManageModalities';
 import ModalitySelector from './Teams/ModalitySelector';
