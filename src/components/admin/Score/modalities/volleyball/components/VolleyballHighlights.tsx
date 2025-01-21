@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../../../../../lib/supabase'
 import { toast } from 'react-toastify'
-import { VolleyballGame } from '../types'
+import { VolleyballGame, VolleyballEvent } from '../types'
 import { GameEvent, Player } from '../../../types'
 import { Plus, X } from 'lucide-react'
 
@@ -16,7 +16,7 @@ const VolleyballHighlights = ({ game, onUpdateGame }: VolleyballHighlightsProps)
   const [selectedTeam, setSelectedTeam] = useState<'A' | 'B'>('A')
   const [selectedPlayer, setSelectedPlayer] = useState<number | null>(null)
   const [eventType, setEventType] = useState<'point' | 'timeout'>('point')
-  const [pointType, setPointType] = useState<'attack' | 'ace' | 'block'>('attack')
+  const [pointType, setPointType] = useState<'attack' | 'block' | 'ace' | 'opponent_error'>('attack')
   const [players, setPlayers] = useState<Player[]>([])
   const [highlights, setHighlights] = useState<GameEvent[]>(game.highlights || [])
 
@@ -158,12 +158,13 @@ const VolleyballHighlights = ({ game, onUpdateGame }: VolleyballHighlightsProps)
       }
 
       // Criar o evento
-      const newEvent: Omit<GameEvent, 'id' | 'created_at' | 'updated_at'> = {
+      const newEvent: Omit<VolleyballEvent, 'id' | 'created_at' | 'updated_at'> = {
         game_id: game.id,
         type: eventType,
         team: selectedTeam,
         player_id: selectedPlayer || undefined,
-        description: eventType === 'point' ? pointType : `timeout_set_${currentSet.set_number}`
+        description: eventType === 'point' ? pointType : `timeout_set_${currentSet.set_number}`,
+        point_type: eventType === 'point' ? pointType : undefined
       }
 
       if (eventType === 'point') {
@@ -184,13 +185,10 @@ const VolleyballHighlights = ({ game, onUpdateGame }: VolleyballHighlightsProps)
           return
         }
 
-        // Adicionar o timeout
+        // Adicionar o ponto
         const { error: eventError } = await supabase
           .from('game_events')
-          .insert([{
-            ...newEvent,
-            description: `timeout_set_${currentSet.set_number}`
-          }])
+          .insert([newEvent])
 
         if (eventError) throw eventError
 
@@ -351,12 +349,13 @@ const VolleyballHighlights = ({ game, onUpdateGame }: VolleyballHighlightsProps)
                   <label className="block text-sm font-medium mb-1">Tipo de Ponto</label>
                   <select
                     value={pointType}
-                    onChange={(e) => setPointType(e.target.value as 'attack' | 'ace' | 'block')}
+                    onChange={(e) => setPointType(e.target.value as 'attack' | 'block' | 'ace' | 'opponent_error')}
                     className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 p-2"
                   >
                     <option value="attack">Ataque</option>
-                    <option value="ace">Ace</option>
                     <option value="block">Bloqueio</option>
+                    <option value="ace">Ace</option>
+                    <option value="opponent_error">Erro do adversário</option>
                   </select>
                 </div>
               )}

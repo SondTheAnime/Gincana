@@ -79,6 +79,7 @@ export interface BaseGame {
 export interface Game extends BaseGame {
   table_tennis_data?: TableTennisGameData
   config: GameConfig
+  volleyball_data?: VolleyballData
 }
 
 export interface Player {
@@ -110,4 +111,29 @@ export interface GameStats {
   red_cards: number
   minutes_played: number
   team: 'A' | 'B'
+}
+
+interface VolleyballSet {
+  number: number
+  score_a: number
+  score_b: number
+  status: 'not_started' | 'in_progress' | 'finished'
+  winner?: 'A' | 'B'
+}
+
+export interface VolleyballData {
+  sets: VolleyballSet[]
+  details: {
+    timeouts_a: number
+    timeouts_b: number
+    points_a: number
+    points_b: number
+    current_set: number
+  }
+  config: {
+    max_timeouts: number
+    points_per_set: number
+    points_last_set: number
+    total_sets: number
+  }
 } 

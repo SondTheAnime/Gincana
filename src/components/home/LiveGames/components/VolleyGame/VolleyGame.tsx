@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Game } from '../../types'
 import { VolleyGameDetails } from './VolleyGameDetails'
+import { cn } from '../../../../../lib/cn'
 
 interface VolleyGameProps {
   game: Game
@@ -28,12 +29,14 @@ export const VolleyGame = ({ game, onClick }: VolleyGameProps) => {
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-2">
               <span className="text-sm text-gray-500 dark:text-gray-400">
-                {game.game_time} - {game.period}
+                {game.game_time || '00:00'} - {game.period === 'in_progress' ? 'Em andamento' : game.period}
               </span>
-              <span className="h-2 w-2 bg-red-500 rounded-full animate-pulse"></span>
+              {game.status === 'live' && (
+                <span className="h-2 w-2 bg-red-500 rounded-full animate-pulse"></span>
+              )}
             </div>
             <span className="text-xs font-medium text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30 px-2 py-1 rounded">
-              {game.category}
+              {game.category === 'masculino' ? 'Masculino' : game.category === 'feminino' ? 'Feminino' : 'Misto'}
             </span>
           </div>
 
@@ -41,10 +44,10 @@ export const VolleyGame = ({ game, onClick }: VolleyGameProps) => {
           <div className="flex items-center justify-between mb-6">
             <div className="flex-1 text-center">
               <p className="font-medium dark:text-white mb-2">{game.team_a_name}</p>
-              <div className="text-3xl font-bold text-gray-900 dark:text-white">{game.score_a}</div>
-              {volleyballData && (
+              <div className="text-3xl font-bold text-gray-900 dark:text-white">{game.score_a || 0}</div>
+              {volleyballData?.details && (
                 <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                  Timeouts: {volleyballData.timeouts_a}/{config.max_timeouts}
+                  Timeouts: {volleyballData.details.timeouts_a}/{config.max_timeouts}
                 </div>
               )}
             </div>
@@ -53,10 +56,10 @@ export const VolleyGame = ({ game, onClick }: VolleyGameProps) => {
             </div>
             <div className="flex-1 text-center">
               <p className="font-medium dark:text-white mb-2">{game.team_b_name}</p>
-              <div className="text-3xl font-bold text-gray-900 dark:text-white">{game.score_b}</div>
-              {volleyballData && (
+              <div className="text-3xl font-bold text-gray-900 dark:text-white">{game.score_b || 0}</div>
+              {volleyballData?.details && (
                 <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                  Timeouts: {volleyballData.timeouts_b}/{config.max_timeouts}
+                  Timeouts: {volleyballData.details.timeouts_b}/{config.max_timeouts}
                 </div>
               )}
             </div>
@@ -68,18 +71,22 @@ export const VolleyGame = ({ game, onClick }: VolleyGameProps) => {
               {volleyballData.sets.map((set, index) => (
                 <div key={index} className="text-center">
                   <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Set {set.number}</div>
-                  <div className={`rounded p-2 ${
+                  <div className={cn(
+                    "rounded p-2",
                     set.status === 'in_progress' 
-                      ? 'bg-red-100 dark:bg-red-900/30' 
+                      ? 'bg-red-100 dark:bg-red-900/30 border-2 border-red-500' 
                       : 'bg-gray-100 dark:bg-gray-700'
-                  }`}>
+                  )}>
                     <span className="text-sm font-medium dark:text-white">
-                      {set.status !== 'not_started' ? `${set.score_a}-${set.score_b}` : '-'}
+                      {set.status !== 'not_started' ? `${set.score_a || 0}-${set.score_b || 0}` : '-'}
                     </span>
                   </div>
                   {set.winner && (
                     <div className="mt-1">
-                      <span className="text-xs font-medium text-green-500">
+                      <span className={cn(
+                        "text-xs font-medium",
+                        set.winner === 'A' ? 'text-green-500' : 'text-blue-500'
+                      )}>
                         {set.winner === 'A' ? '●' : '○'}
                       </span>
                     </div>
@@ -90,19 +97,25 @@ export const VolleyGame = ({ game, onClick }: VolleyGameProps) => {
           )}
 
           {/* Pontuação Atual */}
-          {volleyballData && volleyballData.current_set > 0 && (
+          {volleyballData?.details && typeof volleyballData.details.current_set === 'number' && volleyballData.details.current_set > 0 && (
             <div className="bg-gray-100 dark:bg-gray-700 rounded-lg p-3 mb-4">
               <div className="text-sm text-gray-600 dark:text-gray-300 text-center mb-2">
-                Set {volleyballData.current_set} - Pontos para vencer: {
-                  volleyballData.current_set === config.total_sets 
+                Set {volleyballData.details.current_set} - Pontos para vencer: {
+                  volleyballData.details.current_set === config.total_sets 
                     ? config.points_last_set || config.points_per_set
                     : config.points_per_set
                 }
               </div>
               <div className="flex justify-center items-center space-x-4">
-                <span className="text-xl font-bold dark:text-white">{volleyballData.points_a}</span>
+                <div className="text-center">
+                  <span className="text-xl font-bold dark:text-white">{volleyballData.details.points_a || 0}</span>
+                  <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">{game.team_a_name}</div>
+                </div>
                 <span className="text-gray-400">-</span>
-                <span className="text-xl font-bold dark:text-white">{volleyballData.points_b}</span>
+                <div className="text-center">
+                  <span className="text-xl font-bold dark:text-white">{volleyballData.details.points_b || 0}</span>
+                  <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">{game.team_b_name}</div>
+                </div>
               </div>
             </div>
           )}

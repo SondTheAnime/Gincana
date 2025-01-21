@@ -44,6 +44,7 @@ export interface VolleyballEvent {
   description?: string
   created_at: string
   updated_at: string
+  point_type?: 'attack' | 'block' | 'ace' | 'opponent_error'
 }
 
 export interface VolleyballStats {
@@ -86,10 +87,11 @@ export interface VolleyballGameConfig {
 export interface GameEvent {
   id: number
   game_id: number
-  type: 'point' | 'timeout' | 'substitution'
-  team: 'A' | 'B'
+  type: string
+  team: string
   player_id?: number
-  description?: string
+  description: string
   created_at: string
   updated_at: string
+  point_type?: 'attack' | 'block' | 'ace' | 'opponent_error'
 } 
