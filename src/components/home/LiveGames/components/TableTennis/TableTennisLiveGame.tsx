@@ -1,5 +1,5 @@
-import type { TableTennisGame } from '../../../admin/Score/modalities/table-tennis/types'
-import { formatTime } from '../../../../utils/date'
+import type { TableTennisGame } from '../../../../admin/Score/modalities/table-tennis/types'
+import { formatTime } from '../../../../../utils/date'
 
 interface TableTennisLiveGameProps {
   game: TableTennisGame

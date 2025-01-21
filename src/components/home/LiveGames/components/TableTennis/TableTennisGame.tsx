@@ -1,4 +1,5 @@
-import { Game } from '../types'
+import React from 'react'
+import { Game } from '../../types'
 
 interface TableTennisGameProps {
   game: Game

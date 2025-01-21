@@ -33,7 +33,6 @@ const UpcomingMatches = () => {
         const { data, error } = await supabase
           .from('modalities')
           .select('name')
-          .eq('is_team_sport', true)
           .eq('is_active', true)
           .order('name');
 

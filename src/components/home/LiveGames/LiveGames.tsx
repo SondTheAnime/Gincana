@@ -5,7 +5,7 @@ import { toast } from 'react-toastify';
 import { Game } from './types';
 import { VolleyGame } from './components/VolleyGame/VolleyGame';
 import type { TableTennisGame } from '../../admin/Score/modalities/table-tennis/types';
-import TableTennisLiveGame from './components/TableTennisLiveGame'
+import TableTennisLiveGame from './components/TableTennis/TableTennisLiveGame'
 
 const LiveGames = () => {
   const [games, setGames] = useState<Game[]>([]);
@@ -350,7 +350,6 @@ const LiveGames = () => {
         const { data, error } = await supabase
           .from('modalities')
           .select('name')
-          .eq('is_team_sport', true)
           .eq('is_active', true)
           .order('name');
 

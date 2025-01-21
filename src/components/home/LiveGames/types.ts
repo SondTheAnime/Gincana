@@ -1,4 +1,3 @@
-import type { TableTennisGame } from '../../admin/Score/modalities/table-tennis/types'
 
 export interface GameEvent {
   created_at: string

@@ -336,10 +336,13 @@ const InscricaoTime = () => {
                     ${errors.genero ? 'border-red-500' : 'border-gray-300'}
                   `}
                 >
-                  <option value="Masculino">Masculino</option>
-                  <option value="Feminino">Feminino</option>
+                  {/* <option value="Masculino">Masculino</option>
+                  <option value="Feminino">Feminino</option> */}
                   <option value="Misto">Misto</option>
                 </select>
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                  Somente times mistos são permitidos nesta competição.
+                </p>
                 {errors.genero && (
                   <p className="mt-1 text-sm text-red-500">{errors.genero}</p>
                 )}
