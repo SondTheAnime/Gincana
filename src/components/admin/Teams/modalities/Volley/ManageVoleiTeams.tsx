@@ -109,7 +109,6 @@ const ManageVoleiTeams = () => {
           photo: '',
           is_starter: false,
           is_captain: false,
-          position: 'Ponteiro',
           stats: {
             points: 0,
             aces: 0, 
