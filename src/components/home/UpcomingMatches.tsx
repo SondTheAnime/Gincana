@@ -137,11 +137,11 @@ const UpcomingMatches = () => {
             team_a_name,
             team_b_name
           `)
-          .lte('date', new Date().toISOString().split('T')[0])
+          .gte('date', startDate.toISOString().split('T')[0])
+          .lte('date', endDate.toISOString().split('T')[0])
           .eq('status', 'finished')
           .order('date', { ascending: false })
-          .order('time', { ascending: false })
-          .limit(6);
+          .order('time', { ascending: false });
 
         if (selectedSport !== 'all') {
           upcomingQuery = upcomingQuery.eq('sport', selectedSport);
